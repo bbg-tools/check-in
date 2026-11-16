@@ -107,7 +107,8 @@ input.cmt.has{border-color:#ffb05c;background:#fff8ee;font-weight:600}
 
 /* Ausgaben */
 .outs{display:grid;grid-template-columns:1fr;gap:20px}
-@media(min-width:1100px){.outs{grid-template-columns:1fr 1fr}}
+/* Sammelmail entfernt – nur noch Teams */
+#mailCard,#abEml,.shot .row2 label{display:none!important}
 .outs .card{margin-bottom:0;border-top:4px solid transparent;background:linear-gradient(#fff,#fff) padding-box,var(--grad) border-box}
 .preview{border:1px solid var(--line-soft);border-radius:14px;padding:16px;background:#fff;overflow:auto;max-height:560px}
 .preview[contenteditable]{cursor:text}
@@ -180,7 +181,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 </header>
 <section class="hero">
   <h2>Daily Check-In.</h2>
-  <p>Teamzahlen und Backlog eintragen, offene KPIs je BBG erfassen – Teams-Nachricht und Sammelmail entstehen automatisch.</p>
+  <p>Teamzahlen und Backlog eintragen, offene KPIs je BBG erfassen – die Teams-Nachricht mit @Markierung entsteht automatisch.</p>
 </section>
 
 <div class="wrap">
@@ -246,10 +247,10 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 
   <div class="card">
     <h2><span class="ico" style="--c:#d8f4f4">📷</span>Fotos / Screenshots</h2>
-    <p class="sub">Z. B. Airtable-Ansichten – erscheinen auf Wunsch in der Sammelmail.</p>
+    <p class="sub">Z. B. Airtable-Ansichten – zum Einfügen in den Teams-Chat.</p>
     <div class="drop" id="drop" tabindex="0">Screenshot mit <b>Strg+V</b> einfügen, Bilder hineinziehen oder <u>klicken</u> zum Auswählen<input type="file" id="shotFile" accept="image/*" multiple hidden></div>
     <div class="shots" id="shots"></div>
-    <p class="hint">„In Mail“ bettet das Bild in die Sammelmail ein. Für Teams pro Bild „Bild kopieren“ und im Chat mit Strg+V einfügen. Screenshots werden nicht gespeichert.</p>
+    <p class="hint">Pro Bild „Bild kopieren“ und im Teams-Chat mit Strg+V einfügen. Screenshots werden nicht gespeichert.</p>
   </div>
 
   <div class="outs">
@@ -262,7 +263,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
       <div class="edbar">✏️ Text direkt in der Vorschau anpassbar <span class="st hidden" id="edStT">· manuell bearbeitet – Änderungen oben werden nicht mehr übernommen</span><button type="button" class="hidden" id="edRsT">Änderungen verwerfen</button></div>
       <div class="preview" id="pTeams"></div>
     </div>
-    <div class="card" style="--grad:linear-gradient(90deg,#b9a6ff,#ffa8c2)">
+    <div class="card" id="mailCard" style="--grad:linear-gradient(90deg,#b9a6ff,#ffa8c2)">
       <h2><span class="ico" style="--c:#ffe1ea">✉️</span>Sammelmail an die erwähnten BBGs</h2>
       <div class="btns">
         <button class="b" id="bEml">📨 Als Outlook-Entwurf öffnen</button>
@@ -280,7 +281,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
   <div class="card" style="margin-top:20px">
     <details>
       <summary>⚙️ Team bearbeiten</summary>
-      <p class="hint">Ein Name pro Zeile, Buddy-Teams mit <code># Team X</code> darüber, BBGs ohne Team unter <code># Ohne Team</code>. Die Mail wird automatisch gebildet (Vorname.Nachname@enpal.de, ä→ae, ö→oe, ü→ue, ß→ss). Abweichende Adresse so angeben: <code>Name; adresse@enpal.de</code></p>
+      <p class="hint">Ein Name pro Zeile, Buddy-Teams mit <code># Team X</code> darüber, BBGs ohne Team unter <code># Ohne Team</code>. Die Adresse für die @Markierung wird automatisch gebildet (Vorname.Nachname@enpal.de, ä→ae, ö→oe, ü→ue, ß→ss). Abweichende Adresse so angeben: <code>Name; adresse@enpal.de</code></p>
       <textarea id="teamTxt"></textarea>
       <div class="btns" style="margin-top:10px">
         <button class="b" id="bTeamSave">Team speichern</button>
