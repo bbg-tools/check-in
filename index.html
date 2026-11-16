@@ -769,14 +769,14 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
         ${abs?`<span class="arrow">→</span><select class="e-vert${S.rows[n].vert?'':' miss'}" data-abs-vert="${esc(n)}">${vertOpts(n)}</select>`:'<span class="e-note">kein Vertreter nötig</span>'}
         <button type="button" class="e-del" data-abs-del="${esc(n)}" title="Entfernen">✕</button></div>`;
     });
-    for(let i=0;i<absBlank;i++)h+=`<div class="entry new"><select class="e-name" data-abs-new="1">${optList('',used)}</select><button type="button" class="e-del" data-abs-cancel="1" title="Entfernen">✕</button></div>`;
+    for(let i=0;i<absBlank;i++)h+=`<div class="entry new"><input type="text" class="e-name e-pick" list="bbgList" autocomplete="off" placeholder="BBG-Namen tippen …" data-abs-new="1"><button type="button" class="e-del" data-abs-cancel="1" title="Entfernen">✕</button></div>`;
     if(!h)h='<div class="empty">Heute sind alle da 🙌</div>';
     $('absList').innerHTML=h;
   }
   $('absAdd').onclick=()=>{absBlank++;renderAbs();const s=$('absList').querySelector('[data-abs-new]:last-of-type')||[...$('absList').querySelectorAll('[data-abs-new]')].pop();s&&s.focus();};
   $('absList').addEventListener('change',e=>{
     const t=e.target,d=t.dataset;
-    if(d.absNew){if(!t.value)return;absBlank=Math.max(0,absBlank-1);setStatus(t.value,'urlaub');}
+    if(d.absNew){if(!names().includes(t.value))return;if(S.rows[t.value].status!=='da'){toast(t.value+' ist bereits eingetragen');return;}absBlank=Math.max(0,absBlank-1);setStatus(t.value,'urlaub');}
     else if(d.absName){const old=d.absName,nw=t.value;if(!nw||nw===old)return;const st=S.rows[old].status;setStatus(old,'da');setStatus(nw,st);}
     else if(d.absSt){setStatus(d.absSt,t.value);}
     else if(d.absVert){S.rows[d.absVert].vert=t.value;}
@@ -806,7 +806,7 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
           <button type="button" class="e-del" data-k-del="${k.id}" data-n="${esc(n)}" title="Entfernen">✕</button>
           ${isAbs(n)?`<div class="krep">→ übernimmt ${esc(S.rows[n].vert||'– kein Vertreter!')}</div>`:''}</div>`;
       });
-      for(let j=0;j<blank[k.id];j++)h+=`<div class="krow"><select class="e-name" data-k-new="${k.id}">${optList('',used)}</select><span></span><button type="button" class="e-del" data-k-cancel="${k.id}" title="Entfernen">✕</button></div>`;
+      for(let j=0;j<blank[k.id];j++)h+=`<div class="krow"><input type="text" class="e-name e-pick" list="bbgList" autocomplete="off" placeholder="BBG-Namen tippen …" data-k-new="${k.id}"><span></span><button type="button" class="e-del" data-k-cancel="${k.id}" title="Entfernen">✕</button></div>`;
       h+=`</div><button type="button" class="kadd" data-k-add="${k.id}">＋ BBG</button></div>`;
     });
     $('kgrid').innerHTML=h;
@@ -824,7 +824,7 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
   });
   $('kgrid').addEventListener('change',e=>{
     const t=e.target,d=t.dataset;
-    if(d.kNew){if(!t.value)return;blank[d.kNew]=Math.max(0,blank[d.kNew]-1);pend[d.kNew].add(t.value);renderKpis();
+    if(d.kNew){if(!names().includes(t.value))return;if(kpiEntries(KPIS.find(k=>k.id===d.kNew)).includes(t.value)){toast(t.value+' ist bei dieser KPI schon eingetragen');return;}blank[d.kNew]=Math.max(0,blank[d.kNew]-1);pend[d.kNew].add(t.value);renderKpis();
       const inp=document.querySelector(`[data-k-val="${d.kNew}"][data-n="${CSS.escape(t.value)}"]`);inp&&inp.focus();}
     else if(d.kName){const k=d.kName,old=d.n,nw=t.value;if(!nw||nw===old)return;
       const v=S.rows[old].c[k];delete S.rows[old].c[k];pend[k].delete(old);
@@ -847,14 +847,14 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
     list.forEach(n=>h+=`<div class="entry"><select class="e-name" data-c-name="${esc(n)}">${optList(n,used)}</select>
       <input type="text" class="e-text" data-c-txt="${esc(n)}" value="${esc(S.rows[n].cmt||'')}" placeholder="z. B. Sonderaufgabe, Fokus …">
       <button type="button" class="e-del" data-c-del="${esc(n)}" title="Entfernen">✕</button></div>`);
-    for(let i=0;i<cmtBlank;i++)h+=`<div class="entry new"><select class="e-name" data-c-new="1">${optList('',used)}</select><button type="button" class="e-del" data-c-cancel="1">✕</button></div>`;
+    for(let i=0;i<cmtBlank;i++)h+=`<div class="entry new"><input type="text" class="e-name e-pick" list="bbgList" autocomplete="off" placeholder="BBG-Namen tippen …" data-c-new="1"><button type="button" class="e-del" data-c-cancel="1">✕</button></div>`;
     if(!h)h='<div class="empty">Keine Hinweise für heute.</div>';
     $('cmtList').innerHTML=h;
   }
   $('cmtAdd').onclick=()=>{cmtBlank++;renderCmts();const s=[...$('cmtList').querySelectorAll('[data-c-new]')].pop();s&&s.focus();};
   $('cmtList').addEventListener('change',e=>{
     const t=e.target,d=t.dataset;
-    if(d.cNew){if(!t.value)return;cmtBlank=Math.max(0,cmtBlank-1);cmtPend.add(t.value);renderCmts();const i=$('cmtList').querySelector(`[data-c-txt="${CSS.escape(t.value)}"]`);i&&i.focus();}
+    if(d.cNew){if(!names().includes(t.value))return;if(cmt(t.value)||cmtPend.has(t.value)){toast(t.value+' hat bereits einen Hinweis');return;}cmtBlank=Math.max(0,cmtBlank-1);cmtPend.add(t.value);renderCmts();const i=$('cmtList').querySelector(`[data-c-txt="${CSS.escape(t.value)}"]`);i&&i.focus();}
     else if(d.cName){const old=d.cName,nw=t.value;if(!nw||nw===old)return;S.rows[nw].cmt=S.rows[old].cmt;S.rows[old].cmt='';cmtPend.delete(old);cmtPend.add(nw);rerender();}
   });
   $('cmtList').addEventListener('input',e=>{const d=e.target.dataset;if(!d.cTxt)return;S.rows[d.cTxt].cmt=e.target.value;cmtPend.add(d.cTxt);update();});
@@ -873,7 +873,20 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
     const ab=$('abInfo');ab.classList.toggle('has',open>0||d.cHits.length>0);
     ab.textContent=open||d.cHits.length?`📌 ${open} offene Punkte · ${d.hits.length} ${d.hits.length===1?'BBG':'BBGs'}`:'✓ Keine offenen Punkte';
   }
-  function renderBoard(){renderAbs();renderKpis();renderCmts();}
+  /* --- BBG per Tippen auswählen --- */
+  function fillList(){let dl=$('bbgList');if(!dl){dl=document.createElement('datalist');dl.id='bbgList';document.body.appendChild(dl);}
+    dl.innerHTML=names().map(n=>`<option value="${esc(n)}">`).join('');}
+  function resolve(v){v=(v||'').trim().toLowerCase();if(!v)return null;
+    const ex=names().find(n=>n.toLowerCase()===v);if(ex)return ex;
+    const c=names().filter(n=>n.toLowerCase().includes(v)||n.toLowerCase().split(/\s+/).some(w=>w.startsWith(v)));
+    return c.length===1?c[0]:null;}
+  function commit(t){t.dispatchEvent(new Event('change',{bubbles:true}));}
+  document.addEventListener('input',e=>{const t=e.target;if(!t.classList||!t.classList.contains('e-pick'))return;
+    const ex=names().find(n=>n.toLowerCase()===t.value.trim().toLowerCase());if(ex){t.value=ex;commit(t);}});
+  document.addEventListener('keydown',e=>{const t=e.target;if(!t.classList||!t.classList.contains('e-pick')||e.key!=='Enter')return;
+    e.preventDefault();const n=resolve(t.value);
+    if(n){t.value=n;commit(t);}else toast(t.value.trim()?'Mehrere oder keine Treffer – bitte genauer tippen':'Bitte BBG-Namen eintippen');});
+  function renderBoard(){fillList();renderAbs();renderKpis();renderCmts();}
   function rerender(){renderGrid();update();}
   const _rg=renderGrid;renderGrid=function(){_rg();renderBoard();};
   const _up=update;update=function(){_up();stats();};
@@ -889,6 +902,90 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
 /* Zahlenfelder: Mausrad/Touchpad darf den Wert nicht verändern */
 document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.tagName==='INPUT'&&t.type==='number'&&document.activeElement===t){e.preventDefault();}},{passive:false});
 document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPUT'&&t.type==='number'&&(e.key==='ArrowUp'||e.key==='ArrowDown'))e.preventDefault();});
+</script>
+<script>
+/* ===== Sammelmail: übersichtlich je BBG ===== */
+(function(){
+  const PAL=[['#dcecff','#2a64b8'],['#ffe1ea','#b8365f'],['#ece6ff','#6a4fc9'],['#f2e3ff','#8f43bd'],['#ffe9da','#b85c17'],
+             ['#dff5e8','#23874f'],['#fff3c4','#8a6a00'],['#d8f4f4','#16807f'],['#e6f0db','#4f7a26']];
+  const kcol=id=>PAL[KPIS.findIndex(k=>k.id===id)%PAL.length];
+  const TB='role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;';
+  function pill(k,v){const [bg,fg]=kcol(k.id);
+    return `<span style="display:inline-block;background:${bg};color:${fg};border-radius:12px;padding:4px 10px;margin:0 6px 6px 0;font-size:13px;white-space:nowrap">${esc(k.label)}&nbsp;&nbsp;<b style="color:${fg}">${v}</b></span>`;}
+  function pills(n){return KPIS.filter(k=>+S.rows[n].c[k.id]>0).map(k=>pill(k,S.rows[n].c[k.id])).join('');}
+
+  mailHtml=function(){
+    const d=data();
+    const M='#667085',L='#e4e7eb',T='#1f2933';
+    const open=TEAM.reduce((a,t)=>a+sum(t.name),0);
+    // nach zuständiger Person gruppieren (Vertreter übernimmt die Punkte der Abwesenden)
+    const groups=new Map();
+    d.hits.forEach(n=>{
+      const r=resp(n)||n;
+      if(!groups.has(r))groups.set(r,{own:false,cover:[]});
+      if(r===n)groups.get(r).own=true;else groups.get(r).cover.push(n);
+    });
+    const order=[...groups.keys()].sort((a,b)=>a.localeCompare(b,'de'));
+
+    let h=`<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:${T}">`;
+    h+=`<table ${TB}max-width:680px;border:1px solid ${L}">`;
+    // Kopf
+    h+=`<tr><td style="background:#1d3d66;padding:20px 24px">`+
+       `<div style="font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#a9c7ef;font-weight:bold">Baubegleitung · Daily Check-In</div>`+
+       `<div style="font-size:21px;color:#ffffff;font-weight:bold;margin:4px 0 0">Eure offenen Punkte für heute</div>`+
+       `<div style="font-size:13px;color:#cfe0f7;margin:6px 0 0">${esc(fdLong(S.date))}  ·  ${open} offene Punkte  ·  ${order.length} ${order.length===1?'BBG':'BBGs'}</div>`+
+       `</td></tr><tr><td style="padding:22px 24px 6px">`;
+    h+=`<p style="margin:0 0 10px">Hi zusammen,</p>`;
+    if(!d.hits.length){h+=`<p style="margin:0 0 16px">heute sind keine KPIs offen – danke euch! 💪</p>`;}
+    else h+=`<p style="margin:0 0 18px">aus dem heutigen Check-In sind bei euch noch folgende Punkte offen bzw. vermerkt. Bitte arbeitet sie <b>heute</b> ab und pflegt sie entsprechend. Unten findet ihr jeweils <b>eure eigene Übersicht</b>.</p>`;
+
+    // Teamzahlen
+    const tl=totLines();
+    if(tl.length){
+      h+=`<table ${TB}margin:0 0 20px"><tr>`;
+      tl.forEach((x,i)=>{h+=`<td style="padding:10px 12px;background:#f6f7f9;border:1px solid ${L};vertical-align:top">`+
+        `<div style="font-size:11.5px;color:${M}">${esc(x.l)}</div><div style="font-size:20px;font-weight:bold;color:${T}">${x.v}</div>`+
+        (x.t?`<div style="font-size:11.5px;color:${/▲/.test(x.t)?'#c4473b':/▼/.test(x.t)?'#23874f':M}">${esc(x.t.replace(/[()]/g,'').trim())}</div>`:'')+`</td>`;});
+      h+=`</tr></table>`;
+    }
+
+    // Karten je BBG
+    order.forEach(r=>{
+      const g=groups.get(r);
+      const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
+      h+=`<table ${TB}margin:0 0 12px;border:1px solid ${L}">`;
+      h+=`<tr><td style="background:#f6f7f9;padding:10px 14px;border-bottom:1px solid ${L}">`+
+         `<table ${TB}"><tr><td style="font-size:15px;font-weight:bold;color:${T}">👤 ${esc(r)}</td>`+
+         `<td align="right" style="text-align:right">${total?`<span style="display:inline-block;background:#1d3d66;color:#fff;border-radius:12px;padding:3px 10px;font-size:12.5px;font-weight:bold">${total} offen</span>`:''}</td></tr></table></td></tr>`;
+      h+=`<tr><td style="padding:12px 14px 6px">`;
+      if(g.own&&sum(r))h+=`<div>${pills(r)}</div>`;
+      g.cover.forEach(n=>{
+        const st=STATUS.find(s=>s[0]===S.rows[n].status)[1];
+        h+=`<div style="font-size:12.5px;color:#5b3fb5;font-weight:bold;margin:${g.own&&sum(r)?'6px':'0'} 0 6px">🏖️ Vertretung für ${esc(n)} (${esc(st)})</div>`;
+        if(sum(n))h+=`<div>${pills(n)}</div>`;
+        if(cmt(n))h+=`<div style="background:#fff4e5;border-left:3px solid #f2a54a;padding:7px 10px;margin:2px 0 8px;font-size:13px">🚩 ${esc(cmt(n))}</div>`;
+      });
+      if(!resp(r)&&isAbs(r))h+=`<div style="font-size:12.5px;color:#c4473b;font-weight:bold;margin:0 0 6px">⚠️ abwesend – noch kein Vertreter festgelegt</div>`;
+      if(g.own&&cmt(r))h+=`<div style="background:#fff4e5;border-left:3px solid #f2a54a;padding:7px 10px;margin:2px 0 8px;font-size:13px">🚩 <b>Hinweis:</b> ${esc(cmt(r))}</div>`;
+      h+=`</td></tr></table>`;
+    });
+
+    if(d.usedK.some(k=>k.id==='ffmt'))h+=`<p style="margin:4px 0 10px;font-size:12.5px;color:${M}">ℹ️ <b>FFMT Mapping</b> = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</p>`;
+    // Abwesenheiten kompakt
+    if(d.absent.length||d.half.length){
+      h+=`<p style="margin:14px 0 6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${M};font-weight:bold">Abwesend heute</p><p style="margin:0 0 12px;font-size:13px">`+
+        d.absent.map(a=>`${esc(a.name)} (${esc(a.status)}) → ${esc(a.vert||'kein Vertreter')}`).concat(d.half.map(n=>`${esc(n)} (halber Tag)`)).join('<br>')+`</p>`;
+    }
+    // Screenshots
+    const sh=SHOTS.filter(x=>x.mail);
+    if(sh.length){h+=`<p style="margin:16px 0 6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${M};font-weight:bold">Screenshots</p>`+
+      sh.map(x=>`<p style="margin:0 0 12px">${x.cap?`<span style="font-size:13px;color:${M}">${esc(x.cap)}</span><br>`:''}<img src="${x.src}" width="${Math.min(620,x.w)}" style="width:${Math.min(620,x.w)}px;max-width:100%;height:auto;border:1px solid ${L}" alt="Screenshot"></p>`).join('');}
+    h+=`<p style="margin:14px 0 18px">Gebt kurz Bescheid, falls etwas nicht machbar ist oder ihr Unterstützung braucht. Danke euch! 🙌</p>`;
+    h+=`</td></tr></table></div>`;
+    return h;
+  };
+  update();
+})();
 </script>
 </body>
 </html>
