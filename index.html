@@ -1015,20 +1015,21 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
         d.absent.map(a=>`${esc(a.name)} <i>(${esc(a.status)})</i> → <b>${esc(a.vert||'⚠️ kein Vertreter')}</b>`).concat(d.half.map(n=>`${esc(n)} <i>(halber Tag)</i>`)).join('<br>')+'</p>';
     }
     if(!G.length){h+=GAP+'<p>✅ <b>Keine offenen Punkte</b> – stark, danke euch allen! 💪</p>';return h;}
-    h+=GAP+'<p><b>👤 Offene Punkte je BBG</b></p>';
-    h+='<table><thead><tr><th>BBG</th><th>Offen</th><th>Was ist offen?</th></tr></thead><tbody>';
+    h+=GAP+'<p><b>👤 Offene Punkte je BBG</b></p><ul>';
     G.forEach(([r,g])=>{
       const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
+      let li=`<b>${esc(r)}</b>${total?` – ${total} offen`:''}`;
       const parts=[];
       if(g.own)items(r).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b>`));
       g.cover.forEach(n=>items(n).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b> <i>(für ${esc(n)})</i>`)));
+      if(parts.length)li+='<br>'+parts.join(' · ');
       const notes=[];if(g.own&&cmt(r))notes.push(esc(cmt(r)));g.cover.forEach(n=>{if(cmt(n))notes.push(`${esc(cmt(n))} <i>(für ${esc(n)})</i>`);});
-      const what=parts.join(' · ')+(notes.length?(parts.length?'<br>':'')+notes.map(c=>'🚩 '+c).join('<br>'):'');
-      h+=`<tr><td><b>${esc(r)}</b></td><td><b>${total||'–'}</b></td><td>${what}</td></tr>`;
+      notes.forEach(c=>li+=`<br>🚩 <i>${c}</i>`);
+      h+=`<li>${li}</li>`;
     });
-    h+='</tbody></table>';
+    h+='</ul>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
-    if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><p>'+ks.map(([k,v])=>`${esc(short(k.label))} <b>${v}</b>`).join('&nbsp;&nbsp;|&nbsp;&nbsp;')+'</p>';
+    if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+'</ul>';
     if(ks.some(([k])=>k.id==='ffmt'))h+='<p><i>ℹ️ FFMT Mapping = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</i></p>';
     h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
     return h;
