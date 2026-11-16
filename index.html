@@ -570,7 +570,7 @@ function teamsHtml(){
     h+=`<li><b>${esc(k.label)}</b> (${tot}): `+ppl.map(n=>`${esc(label(n))} ${S.rows[n].c[k.id]}`).join(' · ')+'</li>';
   });
   h+='</ul>'+cm;
-  h+='<p>Bitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
+  h+='<p>Bitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Danke! 🙌</p>';
   return h;
 }
 function teamsText(){
@@ -591,7 +591,7 @@ function teamsText(){
     const tot=ppl.reduce((a,n)=>a+(+S.rows[n].c[k.id]),0);
     t+=`• ${k.label} (${tot}): `+ppl.map(n=>`${label(n)} ${S.rows[n].c[k.id]}`).join(' · ')+'\n';
   });
-  return t+cm+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌';
+  return t+cm+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Danke! 🙌';
 }
 
 /* Mail */
@@ -1028,7 +1028,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     h+='</tbody></table>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
     if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+'</ul>';
-    h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
+    h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Danke! 🙌</p>';
     return h;
   };
   teamsText=function(){
@@ -1044,7 +1044,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
       t+=`• ${r}${total?` – ${total} offen`:''}${parts.length?': '+parts.join(' · '):''}\n`;
       if(g.own&&cmt(r))t+=`   🚩 ${cmt(r)}\n`;g.cover.forEach(n=>{if(cmt(n))t+=`   🚩 ${cmt(n)} (für ${n})\n`;});
     });
-    return t+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌';
+    return t+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Danke! 🙌';
   };
   update();
 })();
@@ -1105,7 +1105,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
         body.push({type:'TextBlock',text:'📋 Summe je KPI',weight:'Bolder',spacing:'Large'});
         body.push(rows(ks.map(([k,v])=>[short(k.label),v,''])));
       }
-      body.push({type:'TextBlock',text:'👉 Bitte die offenen Punkte **heute** abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌',wrap:true,spacing:'Large'});
+      body.push({type:'TextBlock',text:'👉 Bitte die offenen Punkte **heute** abarbeiten und entsprechend pflegen. Danke! 🙌',wrap:true,spacing:'Large'});
     }
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
