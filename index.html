@@ -341,7 +341,8 @@ const KPIS=[
   {id:'uis',  label:'Urgent Inbound Sales',            head:'Urgent Inbound Sales'},
   {id:'ret',  label:'Reopened Retention Cases',        head:'Reopened Retention Cases'},
   {id:'telli',label:'Telli überfällig',                head:'Telli überfällig'},
-  {id:'bv',   label:'Bauvorbereitung offen (heute)',   head:'Bau&shy;vorbereitung offen (heute)'}
+  {id:'bv',   label:'Bauvorbereitung offen (heute)',   head:'Bau&shy;vorbereitung offen (heute)'},
+  {id:'zb',   label:'Zahlungsbereitschaft',            head:'Zahlungs&shy;bereitschaft'}
 ];
 const STATUS=[['da','Anwesend'],['halb','Halber Tag'],['urlaub','Urlaub'],['krank','Krank'],['weg','Abwesend']];
 const ABSENT=['urlaub','krank','weg'];
@@ -734,7 +735,7 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
 /* ===== Eingabe-Board: Abwesenheiten, KPIs, Hinweise ===== */
 (function(){
   const PAL=[['#dcecff','#3b7dd8'],['#ffe1ea','#d0507a'],['#ece6ff','#7a5fd6'],['#f2e3ff','#a05ad0'],['#ffe9da','#d9772e'],
-             ['#dff5e8','#2f9e63'],['#fff3c4','#b38a00'],['#d8f4f4','#1f9a99'],['#e6f0db','#5f8a32']];
+             ['#dff5e8','#2f9e63'],['#fff3c4','#b38a00'],['#d8f4f4','#1f9a99'],['#e6f0db','#5f8a32'],['#ffe2de','#c4473b']];
   const ST_OPTS=[['urlaub','Urlaub'],['krank','Krank'],['weg','Abwesend'],['halb','Halber Tag']];
   const pend={};KPIS.forEach(k=>pend[k.id]=new Set());   // BBG gewählt, Zahl noch leer
   const blank={};KPIS.forEach(k=>blank[k.id]=0);          // neue, noch leere Zeilen
@@ -907,7 +908,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
 /* ===== Sammelmail: übersichtlich je BBG ===== */
 (function(){
   const PAL=[['#dcecff','#2a64b8'],['#ffe1ea','#b8365f'],['#ece6ff','#6a4fc9'],['#f2e3ff','#8f43bd'],['#ffe9da','#b85c17'],
-             ['#dff5e8','#23874f'],['#fff3c4','#8a6a00'],['#d8f4f4','#16807f'],['#e6f0db','#4f7a26']];
+             ['#dff5e8','#23874f'],['#fff3c4','#8a6a00'],['#d8f4f4','#16807f'],['#e6f0db','#4f7a26'],['#ffe2de','#b23a2f']];
   const kcol=id=>PAL[KPIS.findIndex(k=>k.id===id)%PAL.length];
   const TB='role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;';
   function pill(k,v){const [bg,fg]=kcol(k.id);
