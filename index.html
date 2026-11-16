@@ -167,6 +167,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 .kadd{align-self:flex-start;margin:6px 12px 12px;border:none;background:transparent;color:var(--kf);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;border-radius:980px;padding:5px 10px}
 .kadd:hover{background:var(--kc)}
 </style>
+<style>.preview table{border-collapse:collapse;margin:4px 0 10px}.preview th,.preview td{border:1px solid #e4e7eb;padding:5px 10px;font-size:13px;text-align:left}.preview th{background:#f6f7f9;font-weight:600}.preview ul{padding-left:20px}.preview li{margin:0 0 6px}</style>
 </head>
 <body>
 <header class="top">
@@ -984,6 +985,70 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     h+=`<p style="margin:14px 0 18px">Gebt kurz Bescheid, falls etwas nicht machbar ist oder ihr Unterstützung braucht. Danke euch! 🙌</p>`;
     h+=`</td></tr></table></div>`;
     return h;
+  };
+  update();
+})();
+</script>
+<script>
+/* ===== Teams-Nachricht: übersichtlich je BBG ===== */
+(function(){
+  const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
+  function groupsOf(d){
+    const g=new Map();
+    d.hits.forEach(n=>{const r=resp(n)||n;if(!g.has(r))g.set(r,{own:false,cover:[]});if(r===n)g.get(r).own=true;else g.get(r).cover.push(n);});
+    return [...g.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+  }
+  const items=n=>KPIS.filter(k=>+S.rows[n].c[k.id]>0).map(k=>[short(k.label),S.rows[n].c[k.id]]);
+  function head(d){
+    const open=TEAM.reduce((a,t)=>a+sum(t.name),0),tot=TEAM.length,abs=d.absent.length;
+    return {open,line:`📌 ${open} offene Punkte · ${groupsOf(d).length} BBGs betroffen · 👥 ${tot-abs}/${tot} anwesend`};
+  }
+  teamsHtml=function(){
+    const d=data(),H=head(d),tl=totLines(),G=groupsOf(d);
+    let h=`<p><b>📊 Daily Check-In · ${esc(fdLong(S.date))}</b><br>${esc(H.line)}</p>`;
+    if(tl.length){
+      h+='<p><b>📈 Teamzahlen</b></p><table><tr>'+tl.map(x=>`<th>${esc(x.l)}</th>`).join('')+'</tr><tr>'+
+        tl.map(x=>`<td><b>${x.v}</b>${x.t?' '+esc(x.t.replace(' ggü. Vortag','')):''}</td>`).join('')+'</tr></table>';
+    }
+    if(d.absent.length||d.half.length){
+      h+='<p><b>🏖️ Abwesend & Vertretung</b></p><ul>'+
+        d.absent.map(a=>`<li>${esc(a.name)} <i>(${esc(a.status)})</i> → <b>${esc(a.vert||'⚠️ kein Vertreter')}</b></li>`).join('')+
+        d.half.map(n=>`<li>${esc(n)} <i>(halber Tag)</i></li>`).join('')+'</ul>';
+    }
+    if(!G.length){h+='<p>✅ <b>Keine offenen Punkte</b> – stark, danke euch allen! 💪</p>';return h;}
+    h+='<p><b>👤 Offene Punkte je BBG</b></p><ul>';
+    G.forEach(([r,g])=>{
+      const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
+      let li=`<b>${esc(r)}</b>${total?` – ${total} offen`:''}`;
+      const parts=[];
+      if(g.own)items(r).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b>`));
+      g.cover.forEach(n=>items(n).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b> <i>(für ${esc(n)})</i>`)));
+      if(parts.length)li+='<br>'+parts.join(' · ');
+      const notes=[];if(g.own&&cmt(r))notes.push(cmt(r));g.cover.forEach(n=>{if(cmt(n))notes.push(`${cmt(n)} (für ${n})`);});
+      notes.forEach(c=>li+=`<br>🚩 <i>${esc(c)}</i>`);
+      h+=`<li>${li}</li>`;
+    });
+    h+='</ul>';
+    const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
+    if(ks.length)h+='<p><b>📋 Summe je KPI</b><br>'+ks.map(([k,v])=>`${esc(short(k.label))} <b>${v}</b>`).join(' · ')+'</p>';
+    if(ks.some(([k])=>k.id==='ffmt'))h+='<p><i>ℹ️ FFMT Mapping = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</i></p>';
+    h+='<p>Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
+    return h;
+  };
+  teamsText=function(){
+    const d=data(),H=head(d),tl=totLines(),G=groupsOf(d);
+    let t=`📊 Daily Check-In · ${fdLong(S.date)}\n${H.line}\n`;
+    if(tl.length)t+='\n📈 Teamzahlen\n'+tl.map(x=>`• ${x.l}: ${x.v}${x.t}`).join('\n')+'\n';
+    if(d.absent.length||d.half.length)t+='\n🏖️ Abwesend & Vertretung\n'+d.absent.map(a=>`• ${a.name} (${a.status}) → ${a.vert||'kein Vertreter'}`).concat(d.half.map(n=>`• ${n} (halber Tag)`)).join('\n')+'\n';
+    if(!G.length)return t+'\n✅ Keine offenen Punkte – stark, danke euch allen! 💪';
+    t+='\n👤 Offene Punkte je BBG\n';
+    G.forEach(([r,g])=>{
+      const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
+      const parts=[];if(g.own)items(r).forEach(([l,v])=>parts.push(`${l} ${v}`));g.cover.forEach(n=>items(n).forEach(([l,v])=>parts.push(`${l} ${v} (für ${n})`)));
+      t+=`• ${r}${total?` – ${total} offen`:''}${parts.length?': '+parts.join(' · '):''}\n`;
+      if(g.own&&cmt(r))t+=`   🚩 ${cmt(r)}\n`;g.cover.forEach(n=>{if(cmt(n))t+=`   🚩 ${cmt(n)} (für ${n})\n`;});
+    });
+    return t+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌';
   };
   update();
 })();
