@@ -873,7 +873,7 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
     $('stOpen').textContent=open;
     $('stOpenSub').textContent=d.hits.length?d.hits.length+(d.hits.length===1?' BBG':' BBGs')+' betroffen'+(d.cHits.length?' · '+d.cHits.length+' Hinweis'+(d.cHits.length>1?'e':''):''):'Alles erledigt ✓';
     const ab=$('abInfo');ab.classList.toggle('has',open>0||d.cHits.length>0);
-    ab.textContent=open||d.cHits.length?`📌 ${open} offene Punkte · ${d.hits.length} ${d.hits.length===1?'BBG':'BBGs'}`:'✓ Keine offenen Punkte';
+    ab.textContent=open||d.cHits.length?`📌 ${open} ${open===1?"offener Punkt":"offene Punkte"} · ${d.hits.length} ${d.hits.length===1?'BBG':'BBGs'}`:'✓ Keine offenen Punkte';
   }
   /* --- BBG per Tippen auswählen --- */
   function fillList(){let dl=$('bbgList');if(!dl){dl=document.createElement('datalist');dl.id='bbgList';document.body.appendChild(dl);}
@@ -1000,7 +1000,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   const items=n=>KPIS.filter(k=>+S.rows[n].c[k.id]>0).map(k=>[short(k.label),S.rows[n].c[k.id]]);
   function head(d){
     const open=TEAM.reduce((a,t)=>a+sum(t.name),0),tot=TEAM.length,abs=d.absent.length;
-    return {open,line:`📌 ${open} offene Punkte · ${groupsOf(d).length} BBGs betroffen · 👥 ${tot-abs}/${tot} anwesend`};
+    return {open,line:`📌 ${open} ${open===1?"offener Punkt":"offene Punkte"} · ${groupsOf(d).length} ${groupsOf(d).length===1?"BBG":"BBGs"} betroffen · 👥 ${tot-abs}/${tot} anwesend`};
   }
   teamsHtml=function(){
     const d=data(),H=head(d),tl=totLines(),G=groupsOf(d);
@@ -1027,7 +1027,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     });
     h+='</tbody></table>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
-    if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+'</ul>';
+    if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+`<li><b>Gesamt: ${ks.reduce((a,[,v])=>a+v,0)}</b></li></ul>`;
     h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Danke! 🙌</p>';
     return h;
   };
@@ -1062,9 +1062,10 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     return [...g.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
   }
   // einheitlich ausgerichtete Zeilen: Bezeichnung (feste Breite) | Zahl (rechtsbündig) | Zusatz
-  function rows(list){
-    return {type:'Container',spacing:'Small',items:list.map(([l,v,x])=>({type:'ColumnSet',spacing:'Small',columns:[
-      {type:'Column',width:'210px',items:[{type:'TextBlock',text:l,wrap:true}]},
+  // inBox: Innenabstand der grauen Kästen (≈18px) ausgleichen, damit alle Zahlen bündig stehen
+  function rows(list,inBox){
+    return {type:'Container',spacing:'Small',items:list.map(([l,v,x,b])=>({type:'ColumnSet',spacing:'Small',separator:!!b,columns:[
+      {type:'Column',width:inBox?'192px':'210px',items:[{type:'TextBlock',text:b?`**${l}**`:l,wrap:true}]},
       {type:'Column',width:'50px',items:[{type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right'}]},
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:x||' ',isSubtle:true,wrap:true}]}]}))};
   }
@@ -1074,7 +1075,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
     const body=[];
     body.push({type:'TextBlock',text:`📊 Daily Check-In · ${fdLong(S.date)}`,weight:'Bolder',size:'Large',wrap:true});
-    body.push({type:'TextBlock',text:`📌 ${open} offene Punkte · ${G.length} BBGs betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
+    body.push({type:'TextBlock',text:`📌 ${open} ${open===1?"offener Punkt":"offene Punkte"} · ${G.length} ${G.length===1?"BBG":"BBGs"} betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
     if(tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
       body.push(rows(tl.map(x=>[x.l,x.v,x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':''])));
@@ -1089,21 +1090,25 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
       body.push({type:'TextBlock',text:'👤 Offene Punkte je BBG',weight:'Bolder',spacing:'Large'});
       G.forEach(([r,g])=>{
         const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
-        const facts=[];
-        if(g.own)KPIS.forEach(k=>{if(+S.rows[r].c[k.id]>0)facts.push([short(k.label),S.rows[r].c[k.id],'']);});
-        g.cover.forEach(n=>KPIS.forEach(k=>{if(+S.rows[n].c[k.id]>0)facts.push([short(k.label),S.rows[n].c[k.id],'für '+n]);}));
+        const own=g.own?KPIS.filter(k=>+S.rows[r].c[k.id]>0).map(k=>[short(k.label),S.rows[r].c[k.id],'']):[];
         const items=[{type:'ColumnSet',columns:[
           {type:'Column',width:'stretch',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:at(r),weight:'Bolder',size:'Medium',wrap:true}]},
           {type:'Column',width:'auto',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:total?`**${total} offen**`:'',color:'Attention',horizontalAlignment:'Right'}]}]}];
-        if(facts.length)items.push(rows(facts));
-        const notes=[];if(g.own&&cmt(r))notes.push(cmt(r));g.cover.forEach(n=>{if(cmt(n))notes.push(`${cmt(n)} (für ${n})`);});
-        notes.forEach(c=>items.push({type:'TextBlock',text:`🚩 _${c}_`,wrap:true,spacing:'Small'}));
+        if(own.length)items.push(rows(own,true));
+        if(g.own&&cmt(r))items.push({type:'TextBlock',text:`🚩 _${cmt(r)}_`,wrap:true,spacing:'Small'});
+        g.cover.forEach(n=>{
+          const st=(STATUS.find(x=>x[0]===S.rows[n].status)||[,''])[1];
+          items.push({type:'TextBlock',text:`🏖️ Vertretung für ${n}${st?` (${st})`:''}`,isSubtle:true,weight:'Bolder',size:'Small',wrap:true,spacing:'Medium',separator:own.length>0});
+          const f=KPIS.filter(k=>+S.rows[n].c[k.id]>0).map(k=>[short(k.label),S.rows[n].c[k.id],'']);
+          if(f.length)items.push(rows(f,true));
+          if(cmt(n))items.push({type:'TextBlock',text:`🚩 _${cmt(n)}_`,wrap:true,spacing:'Small'});
+        });
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
       });
       const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
       if(ks.length){
         body.push({type:'TextBlock',text:'📋 Summe je KPI',weight:'Bolder',spacing:'Large'});
-        body.push(rows(ks.map(([k,v])=>[short(k.label),v,''])));
+        body.push(rows(ks.map(([k,v])=>[short(k.label),v,'']).concat([['Gesamt',ks.reduce((a,[,v])=>a+v,0),'',1]])));
       }
       body.push({type:'TextBlock',text:'👉 Bitte die offenen Punkte **heute** abarbeiten und entsprechend pflegen. Danke! 🙌',wrap:true,spacing:'Large'});
     }
