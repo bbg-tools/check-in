@@ -168,6 +168,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 .kadd:hover{background:var(--kc)}
 </style>
 <style>.preview table{border-collapse:collapse;margin:4px 0 10px}.preview th,.preview td{border:1px solid #e4e7eb;padding:5px 10px;font-size:13px;text-align:left}.preview th{background:#f6f7f9;font-weight:600}.preview ul{padding-left:20px}.preview li{margin:0 0 6px}.preview h3{margin:0 0 2px;font-size:16px}#pTeams p{margin:0 0 2px}</style>
+<style>button:disabled{opacity:.5;cursor:wait}</style>
 </head>
 <body>
 <header class="top">
@@ -1046,6 +1047,97 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     return t+'\nBitte die offenen Punkte heute abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌';
   };
   update();
+})();
+</script>
+<script>
+/* ===== Direkt in Teams posten (Workflow-Webhook, mit @-Markierung) ===== */
+(function(){
+  const KEY='ciWebhook';
+  const getUrl=()=>{try{return localStorage.getItem(KEY)||'';}catch(e){return '';}};
+  const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
+
+  function groups(d){
+    const g=new Map();
+    d.hits.forEach(n=>{const r=resp(n)||n;if(!g.has(r))g.set(r,{own:false,cover:[]});if(r===n)g.get(r).own=true;else g.get(r).cover.push(n);});
+    return [...g.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+  }
+  function buildCard(){
+    const d=data(),G=groups(d),tl=totLines();
+    const open=TEAM.reduce((a,t)=>a+sum(t.name),0),tot=TEAM.length,abs=d.absent.length;
+    const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
+    const body=[];
+    body.push({type:'TextBlock',text:`📊 Daily Check-In · ${fdLong(S.date)}`,weight:'Bolder',size:'Large',wrap:true});
+    body.push({type:'TextBlock',text:`📌 ${open} offene Punkte · ${G.length} BBGs betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
+    if(tl.length){
+      body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
+      body.push({type:'FactSet',facts:tl.map(x=>({title:x.l,value:`**${x.v}**${x.t?' '+x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim():''}`}))});
+    }
+    if(d.absent.length||d.half.length){
+      body.push({type:'TextBlock',text:'🏖️ Abwesend & Vertretung',weight:'Bolder',spacing:'Large'});
+      d.absent.forEach(a=>body.push({type:'TextBlock',text:`${a.name} _(${a.status})_ → ${a.vert?at(a.vert):'⚠️ kein Vertreter'}`,wrap:true,spacing:'Small'}));
+      d.half.forEach(n=>body.push({type:'TextBlock',text:`${n} _(halber Tag)_`,wrap:true,spacing:'Small'}));
+    }
+    if(!G.length){body.push({type:'TextBlock',text:'✅ **Keine offenen Punkte** – stark, danke euch allen! 💪',wrap:true,spacing:'Large'});}
+    else{
+      body.push({type:'TextBlock',text:'👤 Offene Punkte je BBG',weight:'Bolder',spacing:'Large'});
+      G.forEach(([r,g])=>{
+        const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
+        const facts=[];
+        if(g.own)KPIS.forEach(k=>{if(+S.rows[r].c[k.id]>0)facts.push({title:short(k.label),value:`**${S.rows[r].c[k.id]}**`});});
+        g.cover.forEach(n=>KPIS.forEach(k=>{if(+S.rows[n].c[k.id]>0)facts.push({title:short(k.label),value:`**${S.rows[n].c[k.id]}** _(für ${n})_`});}));
+        const items=[{type:'TextBlock',text:`${at(r)}${total?` – **${total} offen**`:''}`,wrap:true}];
+        if(facts.length)items.push({type:'FactSet',facts,spacing:'Small'});
+        const notes=[];if(g.own&&cmt(r))notes.push(cmt(r));g.cover.forEach(n=>{if(cmt(n))notes.push(`${cmt(n)} (für ${n})`);});
+        notes.forEach(c=>items.push({type:'TextBlock',text:`🚩 _${c}_`,wrap:true,spacing:'Small'}));
+        body.push({type:'Container',style:'emphasis',spacing:'Small',items});
+      });
+      const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
+      if(ks.length){
+        body.push({type:'TextBlock',text:'📋 Summe je KPI',weight:'Bolder',spacing:'Large'});
+        body.push({type:'FactSet',facts:ks.map(([k,v])=>({title:short(k.label),value:`**${v}**`}))});
+      }
+      body.push({type:'TextBlock',text:'👉 Bitte die offenen Punkte **heute** abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌',wrap:true,spacing:'Large'});
+    }
+    return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
+      $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
+  }
+  async function post(){
+    const url=getUrl();
+    if(!url){toast('Bitte zuerst unter „Teams-Workflow“ die Webhook-Adresse hinterlegen');$('wfBox').open=true;$('wfBox').scrollIntoView({behavior:'smooth'});return;}
+    const card=buildCard(),ments=card.attachments[0].content.msteams.entities.length;
+    if(!confirm(`Nachricht jetzt in den Teams-Kanal posten?\n\n${ments} BBG${ments===1?' wird':'s werden'} markiert.`))return;
+    const btns=[$('bPost'),$('abPost')];btns.forEach(b=>b&&(b.disabled=true));
+    try{
+      const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(card)});
+      if(r.ok||r.status===202)toast('✅ In Teams gepostet – bitte im Kanal kurz prüfen');
+      else toast('Fehler beim Posten (Status '+r.status+') – Webhook-Adresse prüfen');
+    }catch(e){
+      try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(card)});
+        toast('Gesendet – Rückmeldung vom Server nicht lesbar. Bitte im Kanal prüfen, ob die Nachricht angekommen ist.');}
+      catch(e2){toast('Senden fehlgeschlagen – Internet bzw. Webhook-Adresse prüfen');}
+    }
+    btns.forEach(b=>b&&(b.disabled=false));
+  }
+  // Buttons
+  const bp=document.createElement('button');bp.className='b';bp.id='bPost';bp.type='button';bp.textContent='📣 In Teams posten (mit @Markierung)';
+  $('bTeams').before(bp);bp.onclick=post;
+  $('bTeams').classList.add('sec');
+  const ap=document.createElement('button');ap.className='ab-btn';ap.id='abPost';ap.type='button';ap.textContent='📣 In Teams posten';
+  $('abTeams').after(ap);ap.onclick=post;
+  // Einstellungen
+  const card=document.querySelector('details textarea#teamTxt').closest('.card');
+  const box=document.createElement('div');box.className='card';
+  box.innerHTML=`<details id="wfBox"><summary>🔗 Teams-Workflow (für „In Teams posten“)</summary>
+    <p class="hint">Webhook-Adresse aus dem Teams-Workflow „In einem Kanal posten, wenn eine Webhookanforderung empfangen wird“ hier einfügen. Sie wird <b>nur in diesem Browser</b> gespeichert und steht nicht im öffentlichen Code.</p>
+    <input type="url" id="wfUrl" placeholder="https://…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;margin-top:6px">
+    <div class="btns" style="margin-top:10px"><button class="b" type="button" id="wfSave">Speichern</button><button class="b ghost" type="button" id="wfDel">Entfernen</button></div>
+    <p class="hint" id="wfState"></p></details>`;
+  card.after(box);
+  const refresh=()=>{const u=getUrl();$('wfUrl').value=u;$('wfState').textContent=u?'✅ Webhook hinterlegt.':'Noch keine Webhook-Adresse hinterlegt.';};
+  $('wfSave').onclick=()=>{const u=$('wfUrl').value.trim();if(!/^https:\/\//.test(u)){toast('Bitte eine gültige https-Adresse einfügen');return;}try{localStorage.setItem(KEY,u);}catch(e){}refresh();toast('Webhook gespeichert');};
+  $('wfDel').onclick=()=>{try{localStorage.removeItem(KEY);}catch(e){}refresh();toast('Webhook entfernt');};
+  refresh();
+  window.buildTeamsCard=buildCard;
 })();
 </script>
 </body>
