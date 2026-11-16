@@ -1013,19 +1013,18 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
         d.absent.map(a=>`${esc(a.name)} <i>(${esc(a.status)})</i> → <b>${esc(a.vert||'⚠️ kein Vertreter')}</b>`).concat(d.half.map(n=>`${esc(n)} <i>(halber Tag)</i>`)).join('<br>')+'</p>';
     }
     if(!G.length){h+=GAP+'<p>✅ <b>Keine offenen Punkte</b> – stark, danke euch allen! 💪</p>';return h;}
-    h+=GAP+'<p><b>👤 Offene Punkte je BBG</b></p><ul>';
+    h+=GAP+'<p><b>👤 Offene Punkte je BBG</b></p>';
+    h+='<table><thead><tr><th>BBG</th><th>Offen</th><th>Was ist offen?</th></tr></thead><tbody>';
     G.forEach(([r,g])=>{
       const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
-      let li=`<b>${esc(r)}</b>${total?` – ${total} offen`:''}`;
-      const parts=[];
-      if(g.own)items(r).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b>`));
-      g.cover.forEach(n=>items(n).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b> <i>(für ${esc(n)})</i>`)));
-      if(parts.length)li+='<br>'+parts.join(' · ');
-      const notes=[];if(g.own&&cmt(r))notes.push(esc(cmt(r)));g.cover.forEach(n=>{if(cmt(n))notes.push(`${esc(cmt(n))} <i>(für ${esc(n)})</i>`);});
-      notes.forEach(c=>li+=`<br>🚩 <i>${c}</i>`);
-      h+=`<li>${li}</li>`;
+      const lines=[];
+      if(g.own)items(r).forEach(([l,v])=>lines.push(`${esc(l)}: <b>${v}</b>`));
+      g.cover.forEach(n=>items(n).forEach(([l,v])=>lines.push(`${esc(l)}: <b>${v}</b> <i>(für ${esc(n)})</i>`)));
+      if(g.own&&cmt(r))lines.push(`🚩 <i>${esc(cmt(r))}</i>`);
+      g.cover.forEach(n=>{if(cmt(n))lines.push(`🚩 <i>${esc(cmt(n))} (für ${esc(n)})</i>`);});
+      h+=`<tr><td><b>${esc(r)}</b></td><td><b>${total||'–'}</b></td><td>${lines.join('<br>')}</td></tr>`;
     });
-    h+='</ul>';
+    h+='</tbody></table>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
     if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+'</ul>';
     h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
