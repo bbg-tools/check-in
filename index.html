@@ -108,7 +108,7 @@ input.cmt.has{border-color:#ffb05c;background:#fff8ee;font-weight:600}
 /* Ausgaben */
 .outs{display:grid;grid-template-columns:1fr;gap:20px}
 /* Sammelmail entfernt – nur noch Teams */
-#mailCard,#abEml,.shot .row2 label{display:none!important}
+#mailCard,#abEml,#shotCard,.shot .row2 label{display:none!important}
 .outs .card{margin-bottom:0;border-top:4px solid transparent;background:linear-gradient(#fff,#fff) padding-box,var(--grad) border-box}
 .preview{border:1px solid var(--line-soft);border-radius:14px;padding:16px;background:#fff;overflow:auto;max-height:560px}
 .preview[contenteditable]{cursor:text}
@@ -245,7 +245,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
     <table class="grid" id="grid"><thead id="thead"></thead><tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot></table>
   </div>
 
-  <div class="card">
+  <div class="card" id="shotCard">
     <h2><span class="ico" style="--c:#d8f4f4">📷</span>Fotos / Screenshots</h2>
     <p class="sub">Z. B. Airtable-Ansichten – zum Einfügen in den Teams-Chat.</p>
     <div class="drop" id="drop" tabindex="0">Screenshot mit <b>Strg+V</b> einfügen, Bilder hineinziehen oder <u>klicken</u> zum Auswählen<input type="file" id="shotFile" accept="image/*" multiple hidden></div>
@@ -531,6 +531,7 @@ $('shotFile').onchange=e=>{addFiles([...e.target.files]);e.target.value='';};
 ['dragleave','drop'].forEach(ev=>$('drop').addEventListener(ev,e=>{e.preventDefault();$('drop').classList.remove('over');}));
 $('drop').addEventListener('drop',e=>addFiles([...e.dataTransfer.files]));
 document.addEventListener('paste',e=>{
+  return; // Screenshots deaktiviert (nur Teams)
   const t=e.target;if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA)$/.test(t.tagName))&&t.type!=='file')return;
   const files=[...(e.clipboardData||{}).items||[]].filter(i=>i.kind==='file'&&i.type.startsWith('image/')).map(i=>i.getAsFile());
   if(files.length){e.preventDefault();addFiles(files);toast(files.length+' Bild(er) eingefügt');}
