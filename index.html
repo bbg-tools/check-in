@@ -625,7 +625,6 @@ function mailHtml(){
     h+='</tr>';
   });
   h+='</table>';
-  if(usedK.some(k=>k.id==='ffmt'))h+=`<p style="margin:0 0 8px;font-size:12px;color:${M}">FFMT Mapping = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</p>`;
   const vt=absent.filter(a=>a.vert&&sum(a.name)>0);
   if(vt.length)h+=`<p style="margin:0 0 8px">🏖️ <b>Vertretung:</b> `+vt.map(a=>`${esc(a.vert)} übernimmt die offenen Punkte von ${esc(a.name)}`).join('; ')+'.</p>';
   h+=shotH;
@@ -972,7 +971,6 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
       h+=`</td></tr></table>`;
     });
 
-    if(d.usedK.some(k=>k.id==='ffmt'))h+=`<p style="margin:4px 0 10px;font-size:12.5px;color:${M}">ℹ️ <b>FFMT Mapping</b> = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</p>`;
     // Abwesenheiten kompakt
     if(d.absent.length||d.half.length){
       h+=`<p style="margin:14px 0 6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:${M};font-weight:bold">Abwesend heute</p><p style="margin:0 0 12px;font-size:13px">`+
@@ -1030,7 +1028,6 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     h+='</ul>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
     if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><ul>'+ks.map(([k,v])=>`<li>${esc(short(k.label))}: <b>${v}</b></li>`).join('')+'</ul>';
-    if(ks.some(([k])=>k.id==='ffmt'))h+='<p><i>ℹ️ FFMT Mapping = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</i></p>';
     h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
     return h;
   };
