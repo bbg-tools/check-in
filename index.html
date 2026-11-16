@@ -1061,6 +1061,13 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     d.hits.forEach(n=>{const r=resp(n)||n;if(!g.has(r))g.set(r,{own:false,cover:[]});if(r===n)g.get(r).own=true;else g.get(r).cover.push(n);});
     return [...g.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
   }
+  // einheitlich ausgerichtete Zeilen: Bezeichnung (feste Breite) | Zahl (rechtsbündig) | Zusatz
+  function rows(list){
+    return {type:'Container',spacing:'Small',items:list.map(([l,v,x])=>({type:'ColumnSet',spacing:'Small',columns:[
+      {type:'Column',width:'210px',items:[{type:'TextBlock',text:l,wrap:true}]},
+      {type:'Column',width:'50px',items:[{type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right'}]},
+      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:x||' ',isSubtle:true,wrap:true}]}]}))};
+  }
   function buildCard(){
     const d=data(),G=groups(d),tl=totLines();
     const open=TEAM.reduce((a,t)=>a+sum(t.name),0),tot=TEAM.length,abs=d.absent.length;
@@ -1070,7 +1077,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     body.push({type:'TextBlock',text:`📌 ${open} offene Punkte · ${G.length} BBGs betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
     if(tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
-      body.push({type:'FactSet',facts:tl.map(x=>({title:x.l,value:`**${x.v}**${x.t?' '+x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim():''}`}))});
+      body.push(rows(tl.map(x=>[x.l,x.v,x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':''])));
     }
     if(d.absent.length||d.half.length){
       body.push({type:'TextBlock',text:'🏖️ Abwesend & Vertretung',weight:'Bolder',spacing:'Large'});
@@ -1083,10 +1090,12 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
       G.forEach(([r,g])=>{
         const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
         const facts=[];
-        if(g.own)KPIS.forEach(k=>{if(+S.rows[r].c[k.id]>0)facts.push({title:short(k.label),value:`**${S.rows[r].c[k.id]}**`});});
-        g.cover.forEach(n=>KPIS.forEach(k=>{if(+S.rows[n].c[k.id]>0)facts.push({title:short(k.label),value:`**${S.rows[n].c[k.id]}** _(für ${n})_`});}));
-        const items=[{type:'TextBlock',text:`${at(r)}${total?` – **${total} offen**`:''}`,wrap:true}];
-        if(facts.length)items.push({type:'FactSet',facts,spacing:'Small'});
+        if(g.own)KPIS.forEach(k=>{if(+S.rows[r].c[k.id]>0)facts.push([short(k.label),S.rows[r].c[k.id],'']);});
+        g.cover.forEach(n=>KPIS.forEach(k=>{if(+S.rows[n].c[k.id]>0)facts.push([short(k.label),S.rows[n].c[k.id],'für '+n]);}));
+        const items=[{type:'ColumnSet',columns:[
+          {type:'Column',width:'stretch',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:at(r),weight:'Bolder',size:'Medium',wrap:true}]},
+          {type:'Column',width:'auto',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:total?`**${total} offen**`:'',color:'Attention',horizontalAlignment:'Right'}]}]}];
+        if(facts.length)items.push(rows(facts));
         const notes=[];if(g.own&&cmt(r))notes.push(cmt(r));g.cover.forEach(n=>{if(cmt(n))notes.push(`${cmt(n)} (für ${n})`);});
         notes.forEach(c=>items.push({type:'TextBlock',text:`🚩 _${c}_`,wrap:true,spacing:'Small'}));
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
@@ -1094,7 +1103,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
       const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
       if(ks.length){
         body.push({type:'TextBlock',text:'📋 Summe je KPI',weight:'Bolder',spacing:'Large'});
-        body.push({type:'FactSet',facts:ks.map(([k,v])=>({title:short(k.label),value:`**${v}**`}))});
+        body.push(rows(ks.map(([k,v])=>[short(k.label),v,''])));
       }
       body.push({type:'TextBlock',text:'👉 Bitte die offenen Punkte **heute** abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌',wrap:true,spacing:'Large'});
     }
