@@ -131,6 +131,42 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 #toast.show{opacity:1}
 @media(max-width:700px){.actionbar{padding:8px 10px}.ab-btn{padding:9px 13px;font-size:13px}.ab-info{font-size:12.5px;padding:8px 10px}.wrap{padding:12px}header.top{padding:0 12px}.brand h1{display:none}}
 </style>
+<style>
+/* ===== Eingabe-Board ===== */
+.entries{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
+.entry{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:14px;background:#f7f7f9}
+.entry[data-st=urlaub]{background:#eef4ff}.entry[data-st=krank]{background:#fff0f3}.entry[data-st=weg]{background:#f4f0ff}.entry[data-st=halb]{background:#fffbea}
+.entry select,.krow select,.entry input.e-text{font:inherit;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:#fff}
+.entry .e-name{min-width:190px;font-weight:600}
+.entry .e-st{min-width:120px}
+.entry .e-vert{min-width:200px}
+.entry .e-vert.miss{border-color:#ff9f0a;background:#fff8ee}
+.entry .e-text{flex:1;min-width:220px}
+.entry .arrow{color:var(--muted);font-weight:600}
+.e-note{font-size:12.5px;color:var(--muted)}
+.e-del{border:none;background:transparent;color:#a1a1a6;font-size:15px;cursor:pointer;border-radius:8px;padding:4px 8px;margin-left:auto}
+.e-del:hover{background:#ffe6ea;color:#c4473b}
+.empty{color:var(--muted);font-size:13.5px;padding:10px 12px;background:#f7f7f9;border-radius:12px}
+.addbtn{border:1px dashed #b9b9c0;background:#fff;color:var(--accent);border-radius:980px;padding:8px 16px;font:inherit;font-weight:500;cursor:pointer}
+.addbtn:hover{background:var(--accent-soft);border-color:var(--accent)}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;align-items:start}
+.kcard{border-radius:16px;background:#fff;border:1px solid var(--line-soft);overflow:hidden;display:flex;flex-direction:column}
+.khead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 14px;background:linear-gradient(135deg,var(--kc),#fff)}
+.ktitle{font-weight:600;font-size:14.5px;line-height:1.3}
+.knote{font-size:11.5px;font-weight:400;color:var(--muted);margin-top:2px}
+.ktot{min-width:34px;height:28px;border-radius:980px;display:grid;place-items:center;font-weight:700;font-size:14px;background:#fff;color:#a1a1a6;padding:0 10px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ktot.on{background:var(--kf);color:#fff}
+.klist{display:flex;flex-direction:column;gap:6px;padding:10px 12px 4px}
+.krow{display:grid;grid-template-columns:minmax(0,1fr) 64px 30px;gap:6px;align-items:center}
+.krow select{width:100%;min-width:0;font-weight:500}
+.krow .kval{width:64px;text-align:center;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:7px 4px;background:#fff}
+.krow .kval.has,.krow .kval:not(:placeholder-shown){background:var(--kf);border-color:var(--kf);color:#fff}
+.krow .kval:focus{outline:none;box-shadow:0 0 0 3px rgba(0,113,227,.18)}
+.krow .e-del{margin:0;padding:4px}
+.krep{grid-column:1/-1;font-size:12px;color:#5b3fb5;margin:-2px 0 2px 4px}
+.kadd{align-self:flex-start;margin:6px 12px 12px;border:none;background:transparent;color:var(--kf);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;border-radius:980px;padding:5px 10px}
+.kadd:hover{background:var(--kc)}
+</style>
 </head>
 <body>
 <header class="top">
@@ -182,27 +218,28 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
   </div>
 
   <div class="card">
-    <h2><span class="ico" style="--c:#fff3c4">📋</span>Offene KPIs je BBG</h2>
-    <p class="sub">Pro KPI die Anzahl eintragen – leer = nichts offen. <b>Enter</b> springt eine Zeile nach unten, so geht ihr KPI für KPI durch.</p>
-    <div class="gridbar">
-      <div class="seg" id="seg">
-        <button type="button" data-f="all" class="on">Alle BBGs</button>
-        <button type="button" data-f="hits">Nur mit offenen Punkten</button>
-        <button type="button" data-f="abs">Abwesende</button>
-      </div>
-      <div class="legend">
-        <span style="--lc:#fffaf1;border:0">offen / Kommentar</span>
-        <span style="--lc:#f2f2f5">abwesend</span>
-      </div>
-    </div>
-    <div class="tblwrap">
-      <table class="grid" id="grid">
-        <thead id="thead"></thead>
-        <tbody id="tbody"></tbody>
-        <tfoot id="tfoot"></tfoot>
-      </table>
-    </div>
-    <p class="hint">Bei Urlaub, Krank oder Abwesend wird automatisch ein anwesender Buddy aus dem eigenen Team als Vertreter vorgeschlagen (änderbar). Die offenen Punkte gehen dann an ihn, und er bekommt die Mail. Abwesenheiten werden in den nächsten Tag übernommen, die Zahlen nicht.</p>
+    <h2><span class="ico" style="--c:#e6f0ff">🏖️</span>Abwesenheiten &amp; Vertretung</h2>
+    <p class="sub">Nur eintragen, wer heute fehlt oder einen halben Tag da ist. Der Vertreter aus dem Buddy-Team wird automatisch vorgeschlagen.</p>
+    <div id="absList" class="entries"></div>
+    <button type="button" class="addbtn" id="absAdd">＋ Abwesenheit hinzufügen</button>
+  </div>
+
+  <div class="card">
+    <h2><span class="ico" style="--c:#fff3c4">📋</span>Offene KPIs</h2>
+    <p class="sub">KPI für KPI durchgehen und nur die BBGs mit offenen Punkten eintragen. <b>Enter</b> im Zahlenfeld fügt direkt den nächsten BBG hinzu.</p>
+    <div class="kgrid" id="kgrid"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="ico" style="--c:#ffe1ea">🚩</span>Hinweise &amp; Sonderaufgaben</h2>
+    <p class="sub">Einzelne BBGs gezielt flaggen – z. B. Sonderaufgaben oder Fokus für heute.</p>
+    <div id="cmtList" class="entries"></div>
+    <button type="button" class="addbtn" id="cmtAdd">＋ Hinweis hinzufügen</button>
+  </div>
+
+  <!-- interne Datentabelle (unsichtbar) -->
+  <div class="hidden" aria-hidden="true">
+    <table class="grid" id="grid"><thead id="thead"></thead><tbody id="tbody"></tbody><tfoot id="tfoot"></tfoot></table>
   </div>
 
   <div class="card">
@@ -694,43 +731,159 @@ renderGrid();update();
 document.addEventListener('input',()=>{S.carried=false;},{once:true});
 </script>
 <script>
-/* ===== Ergänzungen: Farben, Kennzahlen, Filter, Aktionsleiste ===== */
+/* ===== Eingabe-Board: Abwesenheiten, KPIs, Hinweise ===== */
 (function(){
   const PAL=[['#dcecff','#3b7dd8'],['#ffe1ea','#d0507a'],['#ece6ff','#7a5fd6'],['#f2e3ff','#a05ad0'],['#ffe9da','#d9772e'],
              ['#dff5e8','#2f9e63'],['#fff3c4','#b38a00'],['#d8f4f4','#1f9a99'],['#e6f0db','#5f8a32']];
-  let filter='all';
-  function colorize(){
-    document.querySelectorAll('#thead th.kpi').forEach((th,i)=>{const [c,f]=PAL[i%PAL.length];th.style.setProperty('--kc',c);th.style.setProperty('--kf',f);});
-    document.querySelectorAll('#tbody tr').forEach(tr=>tr.querySelectorAll('td.kpi').forEach((td,i)=>td.style.setProperty('--kf',PAL[i%PAL.length][1])));
-    document.querySelectorAll('#tbody select[data-f=status]').forEach(s=>s.dataset.st=s.value);
+  const ST_OPTS=[['urlaub','Urlaub'],['krank','Krank'],['weg','Abwesend'],['halb','Halber Tag']];
+  const pend={};KPIS.forEach(k=>pend[k.id]=new Set());   // BBG gewählt, Zahl noch leer
+  const blank={};KPIS.forEach(k=>blank[k.id]=0);          // neue, noch leere Zeilen
+  let absBlank=0,cmtBlank=0;const cmtPend=new Set();
+
+  const names=()=>TEAM.map(t=>t.name);
+  const optList=(sel,exclude)=>`<option value="">BBG auswählen …</option>`+names().map(n=>`<option value="${esc(n)}"${n===sel?' selected':''}${exclude.has(n)&&n!==sel?' disabled':''}>${esc(n)}${isAbs(n)?' (abwesend)':''}</option>`).join('');
+
+  function setStatus(n,st){
+    S.rows[n].status=st;
+    if(!isAbs(n))S.rows[n].vert='';
+    else{
+      TEAM.forEach(t=>{if(S.rows[t.name].vert===n)S.rows[t.name].vert=buddies(t.name).find(b=>!isAbs(b))||'';});
+      if(!S.rows[n].vert)S.rows[n].vert=buddies(n).find(b=>!isAbs(b))||'';
+    }
   }
+  function vertOpts(n){
+    const bd=buddies(n),others=names().filter(x=>x!==n&&!bd.includes(x)),v=S.rows[n].vert;
+    const o=x=>`<option value="${esc(x)}"${v===x?' selected':''}${isAbs(x)?' disabled':''}>${esc(x)}${bd.includes(x)?' (Buddy)':''}</option>`;
+    return `<option value="">– Vertreter wählen –</option>`+(bd.length?`<optgroup label="Buddy-Team">${bd.map(o).join('')}</optgroup><optgroup label="Alle anderen">`:'')+others.map(o).join('')+(bd.length?'</optgroup>':'');
+  }
+
+  /* --- Abwesenheiten --- */
+  function renderAbs(){
+    const list=names().filter(n=>S.rows[n].status!=='da');
+    const used=new Set(list);
+    let h='';
+    list.forEach(n=>{
+      const st=S.rows[n].status,abs=isAbs(n);
+      h+=`<div class="entry" data-st="${st}"><select class="e-name" data-abs-name="${esc(n)}">${optList(n,used)}</select>
+        <select class="e-st" data-abs-st="${esc(n)}">${ST_OPTS.map(([v,l])=>`<option value="${v}"${st===v?' selected':''}>${l}</option>`).join('')}</select>
+        ${abs?`<span class="arrow">→</span><select class="e-vert${S.rows[n].vert?'':' miss'}" data-abs-vert="${esc(n)}">${vertOpts(n)}</select>`:'<span class="e-note">kein Vertreter nötig</span>'}
+        <button type="button" class="e-del" data-abs-del="${esc(n)}" title="Entfernen">✕</button></div>`;
+    });
+    for(let i=0;i<absBlank;i++)h+=`<div class="entry new"><select class="e-name" data-abs-new="1">${optList('',used)}</select><button type="button" class="e-del" data-abs-cancel="1" title="Entfernen">✕</button></div>`;
+    if(!h)h='<div class="empty">Heute sind alle da 🙌</div>';
+    $('absList').innerHTML=h;
+  }
+  $('absAdd').onclick=()=>{absBlank++;renderAbs();const s=$('absList').querySelector('[data-abs-new]:last-of-type')||[...$('absList').querySelectorAll('[data-abs-new]')].pop();s&&s.focus();};
+  $('absList').addEventListener('change',e=>{
+    const t=e.target,d=t.dataset;
+    if(d.absNew){if(!t.value)return;absBlank=Math.max(0,absBlank-1);setStatus(t.value,'urlaub');}
+    else if(d.absName){const old=d.absName,nw=t.value;if(!nw||nw===old)return;const st=S.rows[old].status;setStatus(old,'da');setStatus(nw,st);}
+    else if(d.absSt){setStatus(d.absSt,t.value);}
+    else if(d.absVert){S.rows[d.absVert].vert=t.value;}
+    else return;
+    S.carried=false;rerender();
+  });
+  $('absList').addEventListener('click',e=>{
+    const d=e.target.dataset;
+    if(d.absDel){setStatus(d.absDel,'da');rerender();}
+    else if(d.absCancel){absBlank=Math.max(0,absBlank-1);renderAbs();}
+  });
+
+  /* --- KPIs --- */
+  function kpiEntries(k){return names().filter(n=>(+S.rows[n].c[k.id]>0)||pend[k.id].has(n));}
+  function renderKpis(){
+    let h='';
+    KPIS.forEach((k,i)=>{
+      const [bg,fg]=PAL[i%PAL.length];const list=kpiEntries(k);const used=new Set(list);
+      const tot=list.reduce((a,n)=>a+(+S.rows[n].c[k.id]||0),0);
+      h+=`<div class="kcard" data-k="${k.id}" style="--kc:${bg};--kf:${fg}">
+        <div class="khead"><div class="ktitle">${esc(k.label)}${k.note?`<div class="knote">${esc(k.note)}</div>`:''}</div><div class="ktot${tot?' on':''}" data-ktot="${k.id}">${tot||'0'}</div></div>
+        <div class="klist">`;
+      list.forEach(n=>{
+        const v=S.rows[n].c[k.id]??'';
+        h+=`<div class="krow"><select class="e-name" data-k-name="${k.id}" data-n="${esc(n)}">${optList(n,used)}</select>
+          <input type="number" min="0" inputmode="numeric" class="kval" data-k-val="${k.id}" data-n="${esc(n)}" value="${v}" placeholder="Anz.">
+          <button type="button" class="e-del" data-k-del="${k.id}" data-n="${esc(n)}" title="Entfernen">✕</button>
+          ${isAbs(n)?`<div class="krep">→ übernimmt ${esc(S.rows[n].vert||'– kein Vertreter!')}</div>`:''}</div>`;
+      });
+      for(let j=0;j<blank[k.id];j++)h+=`<div class="krow"><select class="e-name" data-k-new="${k.id}">${optList('',used)}</select><span></span><button type="button" class="e-del" data-k-cancel="${k.id}" title="Entfernen">✕</button></div>`;
+      h+=`</div><button type="button" class="kadd" data-k-add="${k.id}">＋ BBG</button></div>`;
+    });
+    $('kgrid').innerHTML=h;
+  }
+  function refreshKpiTotals(){
+    KPIS.forEach(k=>{const el=document.querySelector(`[data-ktot="${k.id}"]`);if(!el)return;
+      const t=kpiEntries(k).reduce((a,n)=>a+(+S.rows[n].c[k.id]||0),0);el.textContent=t||'0';el.classList.toggle('on',t>0);});
+  }
+  function addKpiRow(kid){blank[kid]++;renderKpis();const sels=document.querySelectorAll(`[data-k-new="${kid}"]`);const s=sels[sels.length-1];if(s)s.focus();}
+  $('kgrid').addEventListener('click',e=>{
+    const d=e.target.dataset;
+    if(d.kAdd)addKpiRow(d.kAdd);
+    else if(d.kDel){delete S.rows[d.n].c[d.kDel];pend[d.kDel].delete(d.n);rerender();}
+    else if(d.kCancel){blank[d.kCancel]=Math.max(0,blank[d.kCancel]-1);renderKpis();}
+  });
+  $('kgrid').addEventListener('change',e=>{
+    const t=e.target,d=t.dataset;
+    if(d.kNew){if(!t.value)return;blank[d.kNew]=Math.max(0,blank[d.kNew]-1);pend[d.kNew].add(t.value);renderKpis();
+      const inp=document.querySelector(`[data-k-val="${d.kNew}"][data-n="${CSS.escape(t.value)}"]`);inp&&inp.focus();}
+    else if(d.kName){const k=d.kName,old=d.n,nw=t.value;if(!nw||nw===old)return;
+      const v=S.rows[old].c[k];delete S.rows[old].c[k];pend[k].delete(old);
+      if(v)S.rows[nw].c[k]=v;else pend[k].add(nw);rerender();}
+  });
+  $('kgrid').addEventListener('input',e=>{
+    const t=e.target,d=t.dataset;if(!d.kVal)return;
+    const v=t.value===''?0:Math.max(0,parseInt(t.value,10)||0);
+    if(v>0){S.rows[d.n].c[d.kVal]=v;}else{delete S.rows[d.n].c[d.kVal];pend[d.kVal].add(d.n);}
+    t.classList.toggle('has',v>0);
+    refreshKpiTotals();update();
+  });
+  $('kgrid').addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||!e.target.dataset.kVal)return;e.preventDefault();addKpiRow(e.target.dataset.kVal);
+  });
+
+  /* --- Hinweise --- */
+  function renderCmts(){
+    const list=names().filter(n=>cmt(n)||cmtPend.has(n));const used=new Set(list);let h='';
+    list.forEach(n=>h+=`<div class="entry"><select class="e-name" data-c-name="${esc(n)}">${optList(n,used)}</select>
+      <input type="text" class="e-text" data-c-txt="${esc(n)}" value="${esc(S.rows[n].cmt||'')}" placeholder="z. B. Sonderaufgabe, Fokus …">
+      <button type="button" class="e-del" data-c-del="${esc(n)}" title="Entfernen">✕</button></div>`);
+    for(let i=0;i<cmtBlank;i++)h+=`<div class="entry new"><select class="e-name" data-c-new="1">${optList('',used)}</select><button type="button" class="e-del" data-c-cancel="1">✕</button></div>`;
+    if(!h)h='<div class="empty">Keine Hinweise für heute.</div>';
+    $('cmtList').innerHTML=h;
+  }
+  $('cmtAdd').onclick=()=>{cmtBlank++;renderCmts();const s=[...$('cmtList').querySelectorAll('[data-c-new]')].pop();s&&s.focus();};
+  $('cmtList').addEventListener('change',e=>{
+    const t=e.target,d=t.dataset;
+    if(d.cNew){if(!t.value)return;cmtBlank=Math.max(0,cmtBlank-1);cmtPend.add(t.value);renderCmts();const i=$('cmtList').querySelector(`[data-c-txt="${CSS.escape(t.value)}"]`);i&&i.focus();}
+    else if(d.cName){const old=d.cName,nw=t.value;if(!nw||nw===old)return;S.rows[nw].cmt=S.rows[old].cmt;S.rows[old].cmt='';cmtPend.delete(old);cmtPend.add(nw);rerender();}
+  });
+  $('cmtList').addEventListener('input',e=>{const d=e.target.dataset;if(!d.cTxt)return;S.rows[d.cTxt].cmt=e.target.value;cmtPend.add(d.cTxt);update();});
+  $('cmtList').addEventListener('click',e=>{const d=e.target.dataset;
+    if(d.cDel){S.rows[d.cDel].cmt='';cmtPend.delete(d.cDel);rerender();}
+    else if(d.cCancel){cmtBlank=Math.max(0,cmtBlank-1);renderCmts();}});
+
+  /* --- Kennzahlen & Aktionsleiste --- */
   function stats(){
     const d=data(),total=TEAM.length,abs=d.absent.length,half=d.half.length;
     $('stPresent').textContent=(total-abs)+' / '+total;
     $('stPresentSub').textContent=abs||half?[abs?abs+' abwesend':'',half?half+' halber Tag':''].filter(Boolean).join(' · '):'Alle an Bord 🙌';
     const open=TEAM.reduce((a,t)=>a+sum(t.name),0);
     $('stOpen').textContent=open;
-    $('stOpenSub').textContent=d.hits.length?d.hits.length+(d.hits.length===1?' BBG':' BBGs')+' betroffen'+(d.cHits.length?' · '+d.cHits.length+' Kommentar'+(d.cHits.length>1?'e':''):''):'Alles erledigt ✓';
+    $('stOpenSub').textContent=d.hits.length?d.hits.length+(d.hits.length===1?' BBG':' BBGs')+' betroffen'+(d.cHits.length?' · '+d.cHits.length+' Hinweis'+(d.cHits.length>1?'e':''):''):'Alles erledigt ✓';
     const ab=$('abInfo');ab.classList.toggle('has',open>0||d.cHits.length>0);
     ab.textContent=open||d.cHits.length?`📌 ${open} offene Punkte · ${d.hits.length} ${d.hits.length===1?'BBG':'BBGs'}`:'✓ Keine offenen Punkte';
   }
-  function applyFilter(){
-    document.querySelectorAll('#tbody tr').forEach(tr=>{
-      const n=tr.dataset.row;
-      const hit=sum(n)>0||!!cmt(n);
-      tr.classList.toggle('fhide',filter==='hits'?!hit:filter==='abs'?!isAbs(n):false);
-    });
-  }
-  const _rg=renderGrid;renderGrid=function(){_rg();colorize();applyFilter();};
-  const _up=update;update=function(){_up();colorize();stats();applyFilter();};
-  $('seg').addEventListener('click',e=>{
-    const b=e.target.closest('button');if(!b)return;
-    filter=b.dataset.f;$('seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));applyFilter();
-  });
+  function renderBoard(){renderAbs();renderKpis();renderCmts();}
+  function rerender(){renderGrid();update();}
+  const _rg=renderGrid;renderGrid=function(){_rg();renderBoard();};
+  const _up=update;update=function(){_up();stats();};
+  // „Neuer Tag“: Zwischenstände leeren
+  const _new=$('bNew').onclick;$('bNew').onclick=()=>{_new();KPIS.forEach(k=>{pend[k.id].clear();blank[k.id]=0;});cmtPend.clear();absBlank=cmtBlank=0;renderBoard();};
   $('abTeams').onclick=()=>$('bTeams').click();
   $('abEml').onclick=()=>$('bEml').click();
-  colorize();stats();applyFilter();
+  renderBoard();stats();
 })();
 </script>
+
 </body>
 </html>
