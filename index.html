@@ -36,8 +36,9 @@ header button.b{background:#1d1d1f;border-color:#1d1d1f;color:#fff}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 
 /* Kennzahlen */
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
-@media(max-width:1000px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin-bottom:20px}
+@media(max-width:1350px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .stat{border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);background:linear-gradient(135deg,var(--c1),var(--c2))}
 .stat .lbl{font-size:13px;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:6px}
 .stat .val{font-size:34px;font-weight:700;letter-spacing:-.03em;margin:6px 0 2px;color:var(--text);line-height:1.1}
@@ -141,7 +142,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 </header>
 <section class="hero">
   <h2>Daily Check-In.</h2>
-  <p>Offene KPIs je BBG eintragen. Teams-Nachricht und Sammelmail entstehen automatisch.</p>
+  <p>Teamzahlen und Backlog eintragen, offene KPIs je BBG erfassen – Teams-Nachricht und Sammelmail entstehen automatisch.</p>
 </section>
 
 <div class="wrap">
@@ -157,6 +158,16 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
       <div class="lbl">⚠️ Closing w/ active Problems</div>
       <input type="number" min="0" id="totCwp" placeholder="–" aria-label="Closing w/ active Problems gesamt">
       <div class="prev" id="prevCwp"></div>
+    </div>
+    <div class="stat" style="--c1:#d8f4f4;--c2:#eefafa;--fg:#16807f">
+      <div class="lbl">📤 Backlog Offboarding</div>
+      <input type="number" min="0" id="totBlOff" placeholder="–" aria-label="Backlog Offboarding">
+      <div class="prev" id="prevBlOff"></div>
+    </div>
+    <div class="stat" style="--c1:#fff3c4;--c2:#fffaea;--fg:#9a7400">
+      <div class="lbl">🔁 Backlog VBAC</div>
+      <input type="number" min="0" id="totBlVbac" placeholder="–" aria-label="Backlog VBAC">
+      <div class="prev" id="prevBlVbac"></div>
     </div>
     <div class="stat" style="--c1:#dff5e8;--c2:#f0faf4;--fg:#23874f">
       <div class="lbl">👥 Heute anwesend</div>
@@ -430,20 +441,20 @@ function label(n){
 }
 
 /* ---------- Gesamtzahlen ---------- */
-const TOT=[['cases','totCases','prevCases','Cases gesamt'],['cwp','totCwp','prevCwp','Closing w/ active Problems']];
+const TOT=[['cases','totCases','prevCases','Cases gesamt'],['cwp','totCwp','prevCwp','Closing w/ active Problems'],['blOff','totBlOff','prevBlOff','Backlog Offboarding'],['blVbac','totBlVbac','prevBlVbac','Backlog VBAC']];
 function totVal(k){const v=(S.tot||{})[k];return v===undefined||v===''?null:+v;}
 function trend(k){
   const v=totVal(k),pv=S.prevTot&&S.prevTot[k]!==undefined&&S.prevTot[k]!==''?+S.prevTot[k]:null;
   if(v===null||pv===null)return null;
   return {d:v-pv,pv};
 }
-function trendTxt(k){const t=trend(k);if(!t)return '';return t.d===0?' (= Vortag)':` (${t.d>0?'▲ +':'▼ '}${t.d} ggü. Vortag)`;}
+function trendTxt(k){const t=trend(k);if(!t)return '';return t.d===0?' (= Vortag)':` (${t.d>0?'▲ +'+t.d:'▼ −'+Math.abs(t.d)} ggü. Vortag)`;}
 TOT.forEach(([k,id])=>{$(id).value=totVal(k)??'';$(id).addEventListener('input',()=>{S.tot=S.tot||{};S.tot[k]=$(id).value;update();});});
 function refreshTot(){
   TOT.forEach(([k,,pid])=>{
     const t=trend(k),el=$(pid);
     if(S.prevTot&&S.prevTot[k]!==undefined&&S.prevTot[k]!==''){
-      el.innerHTML='Vortag: '+esc(S.prevTot[k])+(t?(t.d===0?' · unverändert':` · <span class="${t.d>0?'up':'down'}">${t.d>0?'▲ +':'▼ '}${t.d}</span>`):'');
+      el.innerHTML='Vortag: '+esc(S.prevTot[k])+(t?(t.d===0?' · unverändert':` · <span class="${t.d>0?'up':'down'}">${t.d>0?'▲ +'+t.d:'▼ −'+Math.abs(t.d)}</span>`):'');
     }else el.textContent='';
   });
 }
