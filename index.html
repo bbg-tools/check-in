@@ -1150,6 +1150,10 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   const refresh=()=>{const u=getUrl();$('wfUrl').value=u;$('wfState').textContent=u?'✅ Webhook hinterlegt.':'Noch keine Webhook-Adresse hinterlegt.';};
   $('wfSave').onclick=()=>{const u=$('wfUrl').value.trim();if(!/^https:\/\//.test(u)){toast('Bitte eine gültige https-Adresse einfügen');return;}try{localStorage.setItem(KEY,u);}catch(e){}refresh();toast('Webhook gespeichert');};
   $('wfDel').onclick=()=>{try{localStorage.removeItem(KEY);}catch(e){}refresh();toast('Webhook entfernt');};
+  // Einrichtungs-Link: …/check-in/#wf=<Webhook> speichert die Adresse nur in diesem Browser (Hash wird nie an einen Server gesendet)
+  try{const m=location.hash.match(/^#wf=(.+)$/);
+    if(m){const u=decodeURIComponent(m[1]);history.replaceState(null,'',location.pathname+location.search);
+      if(/^https:\/\/[^\s]+$/.test(u)){localStorage.setItem(KEY,u);setTimeout(()=>toast('✅ Teams-Workflow eingerichtet – „In Teams posten“ ist startklar'),400);}}}catch(e){}
   refresh();
   window.buildTeamsCard=buildCard;
 })();
