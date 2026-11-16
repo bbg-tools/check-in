@@ -167,7 +167,7 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
 .kadd{align-self:flex-start;margin:6px 12px 12px;border:none;background:transparent;color:var(--kf);font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;border-radius:980px;padding:5px 10px}
 .kadd:hover{background:var(--kc)}
 </style>
-<style>.preview table{border-collapse:collapse;margin:4px 0 10px}.preview th,.preview td{border:1px solid #e4e7eb;padding:5px 10px;font-size:13px;text-align:left}.preview th{background:#f6f7f9;font-weight:600}.preview ul{padding-left:20px}.preview li{margin:0 0 6px}</style>
+<style>.preview table{border-collapse:collapse;margin:4px 0 10px}.preview th,.preview td{border:1px solid #e4e7eb;padding:5px 10px;font-size:13px;text-align:left}.preview th{background:#f6f7f9;font-weight:600}.preview ul{padding-left:20px}.preview li{margin:0 0 6px}.preview h3{margin:0 0 2px;font-size:16px}#pTeams p{margin:0 0 2px}</style>
 </head>
 <body>
 <header class="top">
@@ -1005,34 +1005,32 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   }
   teamsHtml=function(){
     const d=data(),H=head(d),tl=totLines(),G=groupsOf(d);
-    let h=`<p><b>📊 Daily Check-In · ${esc(fdLong(S.date))}</b><br>${esc(H.line)}</p>`;
+    const GAP='<p>&nbsp;</p>';
+    let h=`<h3>📊 Daily Check-In · ${esc(fdLong(S.date))}</h3><p>${esc(H.line)}</p>`;
     if(tl.length){
-      h+='<p><b>📈 Teamzahlen</b></p><table><tr>'+tl.map(x=>`<th>${esc(x.l)}</th>`).join('')+'</tr><tr>'+
-        tl.map(x=>`<td><b>${x.v}</b>${x.t?' '+esc(x.t.replace(' ggü. Vortag','')):''}</td>`).join('')+'</tr></table>';
+      h+=GAP+'<p><b>📈 Teamzahlen</b></p><p>'+tl.map(x=>`${esc(x.l)}: <b>${x.v}</b>${x.t?' <i>'+esc(x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim())+'</i>':''}`).join('&nbsp;&nbsp;|&nbsp;&nbsp;')+'</p>';
     }
     if(d.absent.length||d.half.length){
-      h+='<p><b>🏖️ Abwesend & Vertretung</b></p><ul>'+
-        d.absent.map(a=>`<li>${esc(a.name)} <i>(${esc(a.status)})</i> → <b>${esc(a.vert||'⚠️ kein Vertreter')}</b></li>`).join('')+
-        d.half.map(n=>`<li>${esc(n)} <i>(halber Tag)</i></li>`).join('')+'</ul>';
+      h+=GAP+'<p><b>🏖️ Abwesend & Vertretung</b></p><p>'+
+        d.absent.map(a=>`${esc(a.name)} <i>(${esc(a.status)})</i> → <b>${esc(a.vert||'⚠️ kein Vertreter')}</b>`).concat(d.half.map(n=>`${esc(n)} <i>(halber Tag)</i>`)).join('<br>')+'</p>';
     }
-    if(!G.length){h+='<p>✅ <b>Keine offenen Punkte</b> – stark, danke euch allen! 💪</p>';return h;}
-    h+='<p><b>👤 Offene Punkte je BBG</b></p><ul>';
+    if(!G.length){h+=GAP+'<p>✅ <b>Keine offenen Punkte</b> – stark, danke euch allen! 💪</p>';return h;}
+    h+=GAP+'<p><b>👤 Offene Punkte je BBG</b></p>';
+    h+='<table><thead><tr><th>BBG</th><th>Offen</th><th>Was ist offen?</th></tr></thead><tbody>';
     G.forEach(([r,g])=>{
       const total=(g.own?sum(r):0)+g.cover.reduce((a,n)=>a+sum(n),0);
-      let li=`<b>${esc(r)}</b>${total?` – ${total} offen`:''}`;
       const parts=[];
       if(g.own)items(r).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b>`));
       g.cover.forEach(n=>items(n).forEach(([l,v])=>parts.push(`${esc(l)} <b>${v}</b> <i>(für ${esc(n)})</i>`)));
-      if(parts.length)li+='<br>'+parts.join(' · ');
-      const notes=[];if(g.own&&cmt(r))notes.push(cmt(r));g.cover.forEach(n=>{if(cmt(n))notes.push(`${cmt(n)} (für ${n})`);});
-      notes.forEach(c=>li+=`<br>🚩 <i>${esc(c)}</i>`);
-      h+=`<li>${li}</li>`;
+      const notes=[];if(g.own&&cmt(r))notes.push(esc(cmt(r)));g.cover.forEach(n=>{if(cmt(n))notes.push(`${esc(cmt(n))} <i>(für ${esc(n)})</i>`);});
+      const what=parts.join(' · ')+(notes.length?(parts.length?'<br>':'')+notes.map(c=>'🚩 '+c).join('<br>'):'');
+      h+=`<tr><td><b>${esc(r)}</b></td><td><b>${total||'–'}</b></td><td>${what}</td></tr>`;
     });
-    h+='</ul>';
+    h+='</tbody></table>';
     const ks=KPIS.map(k=>[k,TEAM.reduce((a,t)=>a+(+S.rows[t.name].c[k.id]||0),0)]).filter(([,v])=>v>0);
-    if(ks.length)h+='<p><b>📋 Summe je KPI</b><br>'+ks.map(([k,v])=>`${esc(short(k.label))} <b>${v}</b>`).join(' · ')+'</p>';
+    if(ks.length)h+=GAP+'<p><b>📋 Summe je KPI</b></p><p>'+ks.map(([k,v])=>`${esc(short(k.label))} <b>${v}</b>`).join('&nbsp;&nbsp;|&nbsp;&nbsp;')+'</p>';
     if(ks.some(([k])=>k.id==='ffmt'))h+='<p><i>ℹ️ FFMT Mapping = Case, der zu einem tatsächlichen ReFi werden könnte – bitte priorisiert anschauen.</i></p>';
-    h+='<p>Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
+    h+=GAP+'<p>👉 Bitte die offenen Punkte <b>heute</b> abarbeiten und entsprechend pflegen. Die Details habt ihr zusätzlich per Mail. Danke! 🙌</p>';
     return h;
   };
   teamsText=function(){
