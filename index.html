@@ -510,7 +510,9 @@ function refreshTot(){
   });
 }
 const deN=x=>String(x).replace('.',',');
-function totLines(){return TOT.filter(([k])=>totVal(k)!==null).map(([k,,,l])=>({l,v:deN(totVal(k)),t:trendTxt(k)}));}
+function totLines(){return TOT.filter(([k])=>totVal(k)!==null).map(([k,,,l])=>({k,l,v:deN(totVal(k)),t:trendTxt(k)}));}
+// Trendfarbe: weniger ist besser (Cases, Backlogs) – beim NPS ist mehr besser
+const trendColor=(k,txt)=>{if(!txt||!/[▲▼]/.test(txt))return undefined;const up=/▲/.test(txt);return up!==/^nps/.test(k)?'Attention':'Good';};
 
 /* ---------- Screenshots ---------- */
 const SHOTS=[];
@@ -1179,7 +1181,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const cols=[
       {type:'Column',width:inBox?'192px':'210px',items:list.map(([l,,,b])=>({type:'TextBlock',text:b?`**${l}**`:l,...sep(b)}))},
       {type:'Column',width:'50px',items:list.map(([,v,,b,c])=>({type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right',...(c?{color:c}:{}),...sep(b)}))}];
-    if(list.some(r=>r[2]))cols.push({type:'Column',width:'stretch',items:list.map(([,,x,b])=>({type:'TextBlock',text:x||' ',isSubtle:true,...sep(b)}))});
+    if(list.some(r=>r[2]))cols.push({type:'Column',width:'stretch',items:list.map(([,,x,b,,xc])=>({type:'TextBlock',text:x||' ',...(xc?{color:xc}:{isSubtle:true}),...sep(b)}))});
     return {type:'ColumnSet',spacing:'Small',columns:cols};
   }
   window.ciRows=rows;
@@ -1193,7 +1195,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     if(window.goalCard)window.goalCard().forEach(x=>body.push(x.__rows?rows(x.__rows):x));
     if(tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
-      body.push(rows(tl.map(x=>[x.l,x.v,x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':''])));
+      body.push(rows(tl.map(x=>{const t=x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':'';return [x.l,x.v,t,0,undefined,trendColor(x.k,t)];})));
     }
     if(d.absent.length||d.half.length){
       body.push({type:'TextBlock',text:'🏖️ Abwesend & Vertretung',weight:'Bolder',spacing:'Large'});
@@ -1348,7 +1350,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
     const tl=ZT.filter(([k])=>zv(k)!==null);
     if(T().showTot!==false&&tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
-      body.push(rows(tl.map(([k,l])=>[l,zv(k),zTrend(k)])));
+      body.push(rows(tl.map(([k,l])=>[l,zv(k),zTrend(k),0,undefined,trendColor(k,zTrend(k))])));
     }
     const nb=NW().filter(b=>bsum(b)>0);
     if(nb.length){
