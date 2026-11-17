@@ -712,7 +712,7 @@ $('bEml').onclick=()=>{
 $('bNew').onclick=()=>{
   if(!confirm('Alle Zahlen, Kommentare und Screenshots leeren? Abwesenheiten und Vertretungen bleiben erhalten.'))return;
   if(S.tot&&Object.values(S.tot).some(x=>x!==''))S.prevTot=S.tot;S.tot={};TOT.forEach(([,id])=>$(id).value='');SHOTS.length=0;renderShots();
-  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;$('datum').value=S.date;renderGrid();update();
+  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;delete S.morning;delete S.today;delete S.goal;document.querySelectorAll('[data-t],[data-g]').forEach(x=>x.value='');$('datum').value=S.date;renderGrid();update();
 };
 $('datum').onchange=()=>{S.date=$('datum').value||todayISO();update();};
 
@@ -1219,21 +1219,23 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
   }
-  async function post(){
+  async function post(cardFn,kind){
+    const isMain=typeof cardFn!=='function';if(isMain)cardFn=buildCard;
     const url=getUrl();
     if(!url){toast('Bitte zuerst unter „Teams-Workflow“ die Webhook-Adresse hinterlegen');$('wfBox').open=true;$('wfBox').scrollIntoView({behavior:'smooth'});return;}
-    const card=buildCard(),ments=card.attachments[0].content.msteams.entities.length;
+    const card=cardFn(),ments=card.attachments[0].content.msteams.entities.length;
     const kb=new Blob([JSON.stringify(card.attachments[0].content)]).size/1024;
     if(kb>26){toast(`Nachricht zu groß für Teams (${Math.round(kb)} KB, max. ca. 28 KB) – bitte „Teams kopieren“ nutzen`);return;}
-    if(!confirm(`Nachricht jetzt in den Teams-Kanal posten?\n\n${ments} BBG${ments===1?' wird':'s werden'} markiert.`))return;
-    const btns=[$('bPost'),$('abPost')];btns.forEach(b=>b&&(b.disabled=true));
+    if(!confirm(`${kind||'Nachricht'} jetzt in Teams posten?\n\n${ments} BBG${ments===1?' wird':'s werden'} markiert.`))return;
+    const btns=[$('bPost'),$('abPost'),$('bZw'),$('abZw')];
+    const ok=()=>{if(isMain&&window.ciSnapshot)window.ciSnapshot();};btns.forEach(b=>b&&(b.disabled=true));
     try{
       const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(card)});
-      if(r.ok||r.status===202)toast('✅ In Teams gepostet – bitte im Kanal kurz prüfen');
+      if(r.ok||r.status===202){ok();toast('✅ In Teams gepostet – bitte im Chat kurz prüfen');}
       else toast('Fehler beim Posten (Status '+r.status+') – Webhook-Adresse prüfen');
     }catch(e){
       try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(card)});
-        toast('Gesendet – Rückmeldung vom Server nicht lesbar. Bitte im Kanal prüfen, ob die Nachricht angekommen ist.');}
+        ok();toast('Gesendet – Rückmeldung vom Server nicht lesbar. Bitte im Kanal prüfen, ob die Nachricht angekommen ist.');}
       catch(e2){toast('Senden fehlgeschlagen – Internet bzw. Webhook-Adresse prüfen');}
     }
     btns.forEach(b=>b&&(b.disabled=false));
@@ -1261,7 +1263,132 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     if(m){const u=decodeURIComponent(m[1]);history.replaceState(null,'',location.pathname+location.search);
       if(/^https:\/\/[^\s]+$/.test(u)){localStorage.setItem(KEY,u);setTimeout(()=>toast('✅ Teams-Workflow eingerichtet – „In Teams posten“ ist startklar'),400);}}}catch(e){}
   refresh();
-  window.buildTeamsCard=buildCard;
+  window.buildTeamsCard=buildCard;window.ciPost=post;
+})();
+</script>
+<style>
+/* ===== Zwischenstand ===== */
+#zwCard{border:1px solid #dcd3ff;background:linear-gradient(135deg,#f7f4ff,#fff 55%)}
+.zw-meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.zw-pill{background:#fff;border:1px solid var(--line-soft);border-radius:980px;padding:5px 12px;font-size:13px}
+.zw-pill b{font-weight:700}
+.zw-goal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:6px 0 14px}
+@media(max-width:700px){.zw-goal{grid-template-columns:1fr}}
+.zw-k{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px}
+.zw-k .t{display:flex;justify-content:space-between;font-weight:600;font-size:14px;margin-bottom:6px}
+.zw-k .bar{height:8px;border-radius:8px;background:#ececf1;overflow:hidden;margin-top:8px}
+.zw-k .bar i{display:block;height:100%;border-radius:8px}
+.zw-k .rest{font-size:12.5px;color:var(--muted);margin-top:5px}
+.zw-btns{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.zw-link{border:none;background:none;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:4px 6px;border-radius:8px}
+.zw-link:hover{background:var(--accent-soft)}
+</style>
+<script>
+/* ===== Zwischenstand während des Tages (gleicher Flow) ===== */
+(function(){
+  const GK=[['onb','ONB'],['off','OFF'],['vbac','VBAC']];
+  const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
+  const hhmm=()=>new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  const T=()=>{S.today=S.today||{};return S.today;};
+  const num=v=>v===undefined||v===''||v===null?null:+v;
+  const cur=(n,k)=>+S.rows[n]?.c?.[k]||0;
+  const mor=(n,k)=>{const m=S.morning;return m&&m.c[n]?(+m.c[n][k]||0):0;};
+  const msum=n=>KPIS.reduce((a,k)=>a+mor(n,k.id),0);
+
+  // Morgenstand festhalten (automatisch beim Posten des Check-Ins)
+  window.ciSnapshot=function(){
+    const c={};TEAM.forEach(t=>{const r={};KPIS.forEach(k=>{const v=cur(t.name,k.id);if(v)r[k.id]=v;});if(Object.keys(r).length)c[t.name]=r;});
+    S.morning={at:hhmm(),c};update();
+  };
+  function goal(){
+    const t=T(),parts=GK.map(([k,l])=>{const s=num(t[k+'S']),i=num(t[k+'I']);return {k,l,s,i,p:s>0&&i!==null?Math.round(i/s*100):null};});
+    const ok=parts.filter(x=>x.p!==null),ss=ok.reduce((a,x)=>a+x.s,0),si=ok.reduce((a,x)=>a+x.i,0);
+    return {parts,ok,tot:ok.length?{s:ss,i:si,p:Math.round(si/ss*100)}:null};
+  }
+  function stats(){
+    const open=TEAM.reduce((a,t)=>a+sum(t.name),0);
+    let done=0,neu=0;
+    if(S.morning)TEAM.forEach(t=>KPIS.forEach(k=>{const d=cur(t.name,k.id)-mor(t.name,k.id);if(d<0)done-=d;else neu+=d;}));
+    const m=S.morning?Object.values(S.morning.c).reduce((a,r)=>a+Object.values(r).reduce((x,y)=>x+(+y||0),0),0):null;
+    return {open,done,neu,m};
+  }
+  const restTxt=x=>x.i>=x.s?`${x.i} von ${x.s} · ✅ erreicht${x.i>x.s?` (+${x.i-x.s})`:''}`:`${x.i} von ${x.s} · noch ${x.s-x.i}`;
+
+  function buildZw(){
+    const d=data(),st=stats(),g=goal(),rows=window.ciRows;
+    const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
+    const body=[{type:'TextBlock',text:`⏱️ Zwischenstand · ${fdLong(S.date)} · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true}];
+    body.push({type:'TextBlock',text:`📌 noch ${st.open} offen`+(st.m!==null?` · morgens ${st.m} · ✅ ${st.done} erledigt${st.neu?` · 🆕 ${st.neu} neu`:''}`:''),isSubtle:true,spacing:'None',wrap:true});
+    if(T().show!==false&&g.tot){
+      const clr=p=>p>=100?'Good':'Accent';
+      body.push({type:'TextBlock',text:'🎯 Tagesziel heute',weight:'Bolder',spacing:'Large'});
+      body.push(rows(g.ok.map(x=>[x.l,`${x.p} %`,restTxt(x),0,clr(x.p)]).concat([['Gesamt',`${g.tot.p} %`,restTxt(g.tot),1,clr(g.tot.p)]])));
+    }
+    // offen je BBG (gruppiert nach Zuständigem wie beim Check-In)
+    const G=new Map();
+    d.hits.forEach(n=>{const r=resp(n)||n;if(!G.has(r))G.set(r,{own:false,cover:[]});if(r===n)G.get(r).own=true;else G.get(r).cover.push(n);});
+    const order=[...G.keys()].sort((a,b)=>a.localeCompare(b,'de'));
+    const dTxt=(n,k)=>{if(!S.morning)return '';const c=cur(n,k),m=mor(n,k);return !m?'🆕 neu':c<m?`✅ −${m-c} seit morgens`:c>m?`🆕 +${c-m}`:'';};
+    const lines=n=>KPIS.filter(k=>cur(n,k.id)>0).map(k=>[short(k.label),cur(n,k.id),dTxt(n,k.id)]);
+    if(order.length){
+      body.push({type:'TextBlock',text:'👤 Noch offen je BBG',weight:'Bolder',spacing:'Large'});
+      order.forEach(r=>{
+        const gr=G.get(r),total=(gr.own?sum(r):0)+gr.cover.reduce((a,n)=>a+sum(n),0);
+        const items=[{type:'ColumnSet',columns:[
+          {type:'Column',width:'stretch',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:at(r),weight:'Bolder',size:'Medium',wrap:true}]},
+          {type:'Column',width:'auto',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:`**${total} offen**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
+        const own=gr.own?lines(r):[];if(own.length)items.push(rows(own,true));
+        gr.cover.forEach(n=>{
+          items.push({type:'TextBlock',text:`🏖️ Vertretung für ${n}`,isSubtle:true,weight:'Bolder',size:'Small',wrap:true,spacing:'Medium',separator:own.length>0});
+          const f=lines(n);if(f.length)items.push(rows(f,true));
+        });
+        body.push({type:'Container',style:'emphasis',spacing:'Small',items});
+      });
+    }
+    if(S.morning){
+      const fin=TEAM.map(t=>t.name).filter(n=>msum(n)>0&&sum(n)===0).sort((a,b)=>a.localeCompare(b,'de'));
+      if(fin.length)body.push({type:'TextBlock',text:`✅ **Alles erledigt:** ${fin.join(', ')} – stark! 💪`,wrap:true,spacing:'Medium'});
+    }
+    body.push({type:'TextBlock',text:st.open?'👉 Bitte die restlichen Punkte bis Feierabend abarbeiten und entsprechend pflegen. Danke! 🙌':'🎉 Alles erledigt – mega, danke euch allen! 💪',wrap:true,spacing:'Large'});
+    return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
+      $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
+  }
+  window.buildZwCard=buildZw;
+
+  // UI
+  const card=document.createElement('div');card.className='card';card.id='zwCard';
+  card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏱️</span>Zwischenstand während des Tages</h2>
+    <p class="sub">Tagsüber einfach oben im Board die Zahlen aktualisieren (Neues dazu, Erledigtes runter) und hier den Zwischenstand posten – über denselben Teams-Workflow. Erledigt/neu wird automatisch mit dem Morgenstand verglichen.</p>
+    <div class="zw-meta" id="zwMeta"></div>
+    <div class="goal-head"><div class="g-name" style="margin:4px 0 2px">🎯 Tagesziel heute <span class="g-sub" style="font-weight:400">(optional – Soll &amp; aktuelles Ist aus Power BI)</span></div>
+      <label class="goal-tog"><input type="checkbox" id="zwShow"> Im Zwischenstand anzeigen</label></div>
+    <div class="zw-goal">${GK.map(([k,l])=>`<div class="zw-k" id="zk_${k}"><div class="t"><span>${l}</span><span class="pc">–</span></div>
+      <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
+      <div class="bar"><i></i></div><div class="rest"></div></div>`).join('')}</div>
+    <div class="zw-btns"><button class="b" type="button" id="bZw">⏱️ Zwischenstand in Teams posten</button>
+      <button class="zw-link" type="button" id="zwSnap">Morgenstand jetzt festhalten</button></div>`;
+  document.querySelector('.outs').before(card);
+  const t0=T();$('zwShow').checked=t0.show!==false;
+  card.querySelectorAll('[data-t]').forEach(inp=>{inp.value=t0[inp.dataset.t]??'';inp.addEventListener('input',()=>{T()[inp.dataset.t]=inp.value;update();});});
+  $('zwShow').onchange=()=>{T().show=$('zwShow').checked;update();};
+  $('zwSnap').onclick=()=>{if(S.morning&&!confirm(`Morgenstand von ${S.morning.at} Uhr durch den aktuellen Stand ersetzen?`))return;window.ciSnapshot();toast('Morgenstand festgehalten');};
+  const go=()=>{if(!S.morning&&!confirm('Es ist noch kein Morgenstand festgehalten (wird beim Posten des Check-Ins automatisch gemerkt).\n\nZwischenstand trotzdem ohne „erledigt/neu“ posten?'))return;window.ciPost(buildZw,'Zwischenstand');};
+  $('bZw').onclick=go;
+  const ab=document.createElement('button');ab.className='ab-btn sec';ab.id='abZw';ab.type='button';ab.textContent='⏱️ Zwischenstand';ab.onclick=go;
+  $('abPost').before(ab);
+
+  function refresh(){
+    const st=stats(),g=goal();
+    $('zwMeta').innerHTML=S.morning
+      ?`<span class="zw-pill">🌅 Morgenstand ${esc(S.morning.at)} Uhr: <b>${st.m}</b> offen</span><span class="zw-pill">📌 jetzt <b>${st.open}</b> offen</span><span class="zw-pill">✅ <b>${st.done}</b> erledigt</span><span class="zw-pill">🆕 <b>${st.neu}</b> neu</span>`
+      :`<span class="zw-pill">🌅 Noch kein Morgenstand – wird beim Posten des Check-Ins automatisch festgehalten</span>`;
+    g.parts.forEach(x=>{const el=$('zk_'+x.k),c=x.p===null?'#d2d2d7':x.p>=100?'#30b85a':'#0a84ff';
+      el.querySelector('.pc').textContent=x.p===null?'–':x.p+' %';el.querySelector('.pc').style.color=x.p===null?'':c;
+      el.querySelector('.bar i').style.cssText=`width:${x.p===null?0:Math.min(100,x.p)}%;background:${c}`;
+      el.querySelector('.rest').textContent=x.p===null?'':restTxt(x);});
+  }
+  const oU=update;update=function(){refresh();oU();};
+  update();
 })();
 </script>
 </body>
