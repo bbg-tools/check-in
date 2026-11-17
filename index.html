@@ -1336,7 +1336,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
       });
     }
-    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die neuen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel! 💪':'👉 Dranbleiben – wir holen das Tagesziel! 💪',wrap:true,spacing:'Large'});
+    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die neuen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel!':'👉 Dranbleiben – wir holen das Tagesziel!',wrap:true,spacing:'Large'});
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
   }
