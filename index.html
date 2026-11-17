@@ -1126,10 +1126,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
         {type:'Column',width:'210px',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:'**Gesamt**',size:'Medium'}]},
         {type:'Column',width:'auto',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:`${c.tot.p} %`,size:'ExtraLarge',weight:'Bolder',color:clr(c.tot.p)}]},
         {type:'Column',width:'stretch',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:msg(c.tot.p),wrap:true,weight:'Bolder',color:clr(c.tot.p)}]}]}];
-    c.parts.filter(x=>x.p!==null).forEach(x=>items.push({type:'ColumnSet',spacing:'Small',columns:[
-      {type:'Column',width:'210px',items:[{type:'TextBlock',text:x.l}]},
-      {type:'Column',width:'50px',items:[{type:'TextBlock',text:`**${x.p} %**`,color:clr(x.p),horizontalAlignment:'Right'}]},
-      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`${x.i} Ist / ${x.s} Soll`,isSubtle:true}]}]}));
+    items.push({__rows:c.parts.filter(x=>x.p!==null).map(x=>[x.l,`${x.p} %`,`${x.i} Ist / ${x.s} Soll`,0,clr(x.p)])});
     return items;
   };
   // Teams kopieren (HTML/Text)
@@ -1165,12 +1162,16 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   }
   // einheitlich ausgerichtete Zeilen: Bezeichnung (feste Breite) | Zahl (rechtsbündig) | Zusatz
   // inBox: Innenabstand der grauen Kästen (≈18px) ausgleichen, damit alle Zahlen bündig stehen
+  // Kompakt: eine Spalte je Feld mit untereinander stehenden Zeilen (hält die Karte unter Teams' ~28-KB-Grenze)
   function rows(list,inBox){
-    return {type:'Container',spacing:'Small',items:list.map(([l,v,x,b])=>({type:'ColumnSet',spacing:'Small',separator:!!b,columns:[
-      {type:'Column',width:inBox?'192px':'210px',items:[{type:'TextBlock',text:b?`**${l}**`:l,wrap:true}]},
-      {type:'Column',width:'50px',items:[{type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right'}]},
-      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:x||' ',isSubtle:true,wrap:true}]}]}))};
+    const sep=b=>b?{separator:true}:{};
+    const cols=[
+      {type:'Column',width:inBox?'192px':'210px',items:list.map(([l,,,b])=>({type:'TextBlock',text:b?`**${l}**`:l,...sep(b)}))},
+      {type:'Column',width:'50px',items:list.map(([,v,,b,c])=>({type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right',...(c?{color:c}:{}),...sep(b)}))}];
+    if(list.some(r=>r[2]))cols.push({type:'Column',width:'stretch',items:list.map(([,,x,b])=>({type:'TextBlock',text:x||' ',isSubtle:true,...sep(b)}))});
+    return {type:'ColumnSet',spacing:'Small',columns:cols};
   }
+  window.ciRows=rows;
   function buildCard(){
     const d=data(),G=groups(d),tl=totLines();
     const open=TEAM.reduce((a,t)=>a+sum(t.name),0),tot=TEAM.length,abs=d.absent.length;
@@ -1178,7 +1179,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const body=[];
     body.push({type:'TextBlock',text:`📊 Daily Check-In · ${fdLong(S.date)}`,weight:'Bolder',size:'Large',wrap:true});
     body.push({type:'TextBlock',text:`📌 ${open} ${open===1?"offener Punkt":"offene Punkte"} · ${G.length} ${G.length===1?"BBG":"BBGs"} betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
-    if(window.goalCard)body.push(...window.goalCard());
+    if(window.goalCard)window.goalCard().forEach(x=>body.push(x.__rows?rows(x.__rows):x));
     if(tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
       body.push(rows(tl.map(x=>[x.l,x.v,x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':''])));
@@ -1222,6 +1223,8 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const url=getUrl();
     if(!url){toast('Bitte zuerst unter „Teams-Workflow“ die Webhook-Adresse hinterlegen');$('wfBox').open=true;$('wfBox').scrollIntoView({behavior:'smooth'});return;}
     const card=buildCard(),ments=card.attachments[0].content.msteams.entities.length;
+    const kb=new Blob([JSON.stringify(card.attachments[0].content)]).size/1024;
+    if(kb>26){toast(`Nachricht zu groß für Teams (${Math.round(kb)} KB, max. ca. 28 KB) – bitte „Teams kopieren“ nutzen`);return;}
     if(!confirm(`Nachricht jetzt in den Teams-Kanal posten?\n\n${ments} BBG${ments===1?' wird':'s werden'} markiert.`))return;
     const btns=[$('bPost'),$('abPost')];btns.forEach(b=>b&&(b.disabled=true));
     try{
