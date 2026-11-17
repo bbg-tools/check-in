@@ -1051,6 +1051,106 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   update();
 })();
 </script>
+<style>
+/* ===== Zielerreichung Vortag ===== */
+.goal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.goal-tog{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--muted);cursor:pointer;user-select:none}
+.goal-tog input{width:18px;height:18px;accent-color:var(--accent)}
+.goal{display:grid;grid-template-columns:220px repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+@media(max-width:900px){.goal{grid-template-columns:repeat(2,minmax(0,1fr))}.goal .g-tot{grid-column:1/-1}}
+.g-box{border-radius:16px;background:#f7f7f9;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.g-tot{background:linear-gradient(135deg,#e8f2fd,#f5f9ff)}
+.g-name{font-weight:600;font-size:14px}
+.gauge{--p:0;--col:#0a84ff;position:relative;width:132px;height:66px;overflow:hidden}
+.gauge:before{content:"";position:absolute;inset:0 0 -66px 0;border-radius:50%;
+  background:conic-gradient(from -90deg,var(--col) calc(var(--p)*.5turn),#e3e3e8 0 .5turn,transparent 0);
+  -webkit-mask:radial-gradient(circle,transparent 46px,#000 47px);mask:radial-gradient(circle,transparent 46px,#000 47px)}
+.g-tot .gauge{width:172px;height:86px}
+.g-tot .gauge:before{inset:0 0 -86px 0;-webkit-mask:radial-gradient(circle,transparent 60px,#000 61px);mask:radial-gradient(circle,transparent 60px,#000 61px)}
+.g-pct{position:absolute;left:0;right:0;bottom:0;text-align:center;font-weight:700;font-size:19px;letter-spacing:-.02em}
+.g-tot .g-pct{font-size:26px}
+.g-in{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.g-in label{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted);text-align:center}
+.g-in input{width:100%;text-align:center;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:7px 4px;background:#fff}
+.g-in input:focus{outline:none;box-shadow:0 0 0 3px rgba(0,113,227,.18);border-color:var(--accent)}
+.g-sub{font-size:12.5px;color:var(--muted);text-align:center}
+.g-msg{font-size:13.5px;font-weight:600;text-align:center}
+</style>
+<script>
+/* ===== Zielerreichung Vortag (Soll/Ist aus Power BI) ===== */
+(function(){
+  const GK=[['onb','ONB'],['off','OFF'],['vbac','VBAC']];
+  const prevWorkday=iso=>{const d=new Date(iso+'T12:00:00');do{d.setDate(d.getDate()-1);}while(d.getDay()===0||d.getDay()===6);return d;};
+  const dLabel=()=>{const d=prevWorkday(S.date);return d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});};
+  const G=()=>{S.goal=S.goal||{show:true};return S.goal;};
+  const num=v=>v===undefined||v===''||v===null?null:+v;
+  function calc(){
+    const g=G(),parts=GK.map(([k,l])=>{const s=num(g[k+'S']),i=num(g[k+'I']);return {k,l,s,i,p:s>0&&i!==null?Math.round(i/s*100):null};});
+    const ok=parts.filter(x=>x.p!==null),ss=ok.reduce((a,x)=>a+x.s,0),si=ok.reduce((a,x)=>a+x.i,0);
+    return {parts,tot:ok.length?{s:ss,i:si,p:Math.round(si/ss*100)}:null};
+  }
+  const col=p=>p>=100?'#30b85a':p>=90?'#f2a33a':'#e5534b';
+  const msg=p=>p>=100?'🎉 Ziel übertroffen – stark gemacht, Team!':p>=90?'💪 Knapp dran – heute holen wir den Rest!':'🚀 Heute ziehen wir gemeinsam an!';
+  const active=()=>{const c=calc();return G().show&&c.tot?c:null;};
+
+  // UI
+  const card=document.createElement('div');card.className='card';card.id='goalCard';
+  card.innerHTML=`<div class="goal-head"><div><h2><span class="ico" style="--c:#dff5e8">🎯</span>Zielerreichung gestern <span class="g-sub" id="gDate" style="font-weight:400"></span></h2>
+    <p class="sub">Soll &amp; Ist vom Vortag aus Power BI eintragen – die Prozente rechnet das Tool selbst aus.</p></div>
+    <label class="goal-tog"><input type="checkbox" id="gShow"> In Teams-Nachricht anzeigen</label></div>
+    <div class="goal">
+      <div class="g-box g-tot"><div class="g-name">Gesamt</div><div class="gauge" id="gTotG"><div class="g-pct">–</div></div><div class="g-sub" id="gTotSub">Ist / Soll</div><div class="g-msg" id="gMsg"></div></div>
+      ${GK.map(([k,l])=>`<div class="g-box"><div class="g-name">${l}</div><div class="gauge" id="g_${k}"><div class="g-pct">–</div></div>
+        <div class="g-in"><label>Soll<input type="number" min="0" data-g="${k}S" placeholder="–"></label><label>Ist<input type="number" min="0" data-g="${k}I" placeholder="–"></label></div></div>`).join('')}
+    </div>`;
+  document.querySelector('.stats').after(card);
+  const g0=G();$('gShow').checked=g0.show!==false;
+  card.querySelectorAll('[data-g]').forEach(inp=>{inp.value=g0[inp.dataset.g]??'';inp.addEventListener('input',()=>{G()[inp.dataset.g]=inp.value;update();});});
+  $('gShow').onchange=()=>{G().show=$('gShow').checked;update();};
+  function paint(el,p){el.style.setProperty('--p',p===null?0:Math.min(p,100)/100);el.style.setProperty('--col',p===null?'#e3e3e8':col(p));
+    const t=el.querySelector('.g-pct');t.textContent=p===null?'–':p+' %';t.style.color=p===null?'var(--muted)':'var(--text)';}
+  function refresh(){
+    const c=calc();$('gDate').textContent='· '+dLabel();
+    c.parts.forEach(x=>paint($('g_'+x.k),x.p));
+    paint($('gTotG'),c.tot?c.tot.p:null);
+    $('gTotSub').textContent=c.tot?`${c.tot.i} Ist / ${c.tot.s} Soll`:'Ist / Soll';
+    $('gMsg').textContent=c.tot?msg(c.tot.p):'';$('gMsg').style.color=c.tot?col(c.tot.p):'';
+  }
+
+  // Teams-Karte (wird von „In Teams posten“ eingebunden)
+  window.goalCard=function(){
+    const c=active();if(!c)return [];
+    const clr=p=>p>=100?'Good':p>=90?'Warning':'Attention';
+    const items=[{type:'TextBlock',text:`🎯 Zielerreichung gestern (${dLabel()})`,weight:'Bolder',spacing:'Large'},
+      {type:'ColumnSet',spacing:'Small',columns:[
+        {type:'Column',width:'210px',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:'**Gesamt**',size:'Medium'}]},
+        {type:'Column',width:'auto',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:`${c.tot.p} %`,size:'ExtraLarge',weight:'Bolder',color:clr(c.tot.p)}]},
+        {type:'Column',width:'stretch',verticalContentAlignment:'Center',items:[{type:'TextBlock',text:msg(c.tot.p),wrap:true,weight:'Bolder',color:clr(c.tot.p)}]}]}];
+    c.parts.filter(x=>x.p!==null).forEach(x=>items.push({type:'ColumnSet',spacing:'Small',columns:[
+      {type:'Column',width:'210px',items:[{type:'TextBlock',text:x.l}]},
+      {type:'Column',width:'50px',items:[{type:'TextBlock',text:`**${x.p} %**`,color:clr(x.p),horizontalAlignment:'Right'}]},
+      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`${x.i} Ist / ${x.s} Soll`,isSubtle:true}]}]}));
+    return items;
+  };
+  // Teams kopieren (HTML/Text)
+  const ico=p=>p>=100?'✅':p>=90?'🟡':'🔴';
+  const oH=teamsHtml,oT=teamsText;
+  teamsHtml=function(){
+    const h=oH(),c=active();if(!c)return h;
+    const blk=`<p>&nbsp;</p><p><b>🎯 Zielerreichung gestern (${esc(dLabel())})</b></p><p><b>Gesamt: ${c.tot.p} %</b> ${ico(c.tot.p)} – ${esc(msg(c.tot.p))}</p><ul>`+
+      c.parts.filter(x=>x.p!==null).map(x=>`<li>${x.l}: <b>${x.p} %</b> ${ico(x.p)} <i>(${x.i} Ist / ${x.s} Soll)</i></li>`).join('')+'</ul>';
+    const i=h.indexOf('</p>');return i<0?h+blk:h.slice(0,i+4)+blk+h.slice(i+4);
+  };
+  teamsText=function(){
+    const t=oT(),c=active();if(!c)return t;
+    const blk=`\n🎯 Zielerreichung gestern (${dLabel()})\nGesamt: ${c.tot.p} % ${ico(c.tot.p)} – ${msg(c.tot.p)}\n`+
+      c.parts.filter(x=>x.p!==null).map(x=>`• ${x.l}: ${x.p} % ${ico(x.p)} (${x.i} Ist / ${x.s} Soll)`).join('\n');
+    const L=t.split('\n');return [L[0],L[1],blk,...L.slice(2)].join('\n');
+  };
+  const oU=update;update=function(){refresh();oU();};
+  update();
+})();
+</script>
 <script>
 /* ===== Direkt in Teams posten (Workflow-Webhook, mit @-Markierung) ===== */
 (function(){
@@ -1078,6 +1178,7 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const body=[];
     body.push({type:'TextBlock',text:`📊 Daily Check-In · ${fdLong(S.date)}`,weight:'Bolder',size:'Large',wrap:true});
     body.push({type:'TextBlock',text:`📌 ${open} ${open===1?"offener Punkt":"offene Punkte"} · ${G.length} ${G.length===1?"BBG":"BBGs"} betroffen · 👥 ${tot-abs}/${tot} anwesend`,isSubtle:true,spacing:'None',wrap:true});
+    if(window.goalCard)body.push(...window.goalCard());
     if(tl.length){
       body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
       body.push(rows(tl.map(x=>[x.l,x.v,x.t?x.t.replace(' ggü. Vortag','').replace(/[()]/g,'').trim()+' ggü. Vortag':''])));
