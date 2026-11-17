@@ -712,7 +712,7 @@ $('bEml').onclick=()=>{
 $('bNew').onclick=()=>{
   if(!confirm('Alle Zahlen, Kommentare und Screenshots leeren? Abwesenheiten und Vertretungen bleiben erhalten.'))return;
   if(S.tot&&Object.values(S.tot).some(x=>x!==''))S.prevTot=S.tot;S.tot={};TOT.forEach(([,id])=>$(id).value='');SHOTS.length=0;renderShots();
-  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;delete S.commit;delete S.goal;document.querySelectorAll('[data-g]').forEach(x=>x.value='');$('datum').value=S.date;renderGrid();update();
+  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;delete S.today;delete S.zwNew;delete S.goal;document.querySelectorAll('[data-g],[data-t]').forEach(x=>x.value='');$('datum').value=S.date;renderGrid();update();
 };
 $('datum').onchange=()=>{S.date=$('datum').value||todayISO();update();};
 
@@ -1267,84 +1267,157 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
 })();
 </script>
 <style>
-/* ===== Commitment-Check ===== */
+/* ===== Tabs + Zwischenstand ===== */
+.tabs{display:inline-flex;gap:4px;background:#e9e9ee;border-radius:980px;padding:4px;margin-top:14px}
+.tabs button{border:none;background:transparent;font:inherit;font-weight:500;font-size:14.5px;padding:8px 18px;border-radius:980px;cursor:pointer;color:var(--text)}
+.tabs button.on{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1);font-weight:600}
+body.tab-zw .wrap>*:not(#zwCard):not(#wfCardHolder){display:none!important}
+body:not(.tab-zw) #zwCard{display:none}
+body.tab-zw #abTeams,body.tab-zw #abPost,body.tab-zw #abInfo{display:none!important}
+body:not(.tab-zw) #abZw{display:none!important}
+body.tab-zw .actionbar{justify-content:flex-end}
 #zwCard{border:1px solid #dcd3ff;background:linear-gradient(135deg,#f7f4ff,#fff 55%)}
-.cm-list{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
-.cm-row{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,74px) 54px 30px;gap:8px;align-items:center;padding:8px 10px;border-radius:14px;background:#fff;border:1px solid var(--line-soft)}
-.cm-row .nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cm-row label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted);text-align:center}
-.cm-row input[type=number]{width:100%;text-align:center;font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:6px 2px;background:#fff}
-.cm-row input[type=number]:not(:placeholder-shown){background:#6a4fc9;border-color:#6a4fc9;color:#fff}
-.cm-row .tot{text-align:center;font-weight:700;font-size:16px;color:#6a4fc9}
-.cm-new{display:flex;gap:8px;align-items:center}
-.cm-new input{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:240px;background:#fff}
-.cm-sum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-.cm-pill{background:#fff;border:1px solid var(--line-soft);border-radius:980px;padding:5px 12px;font-size:13px}
-@media(max-width:700px){.cm-row{grid-template-columns:repeat(3,minmax(0,1fr)) 30px}.cm-row .nm{grid-column:1/-2}.cm-row .tot{display:none}.cm-new input{min-width:0;flex:1}}
+.zw-h{font-weight:600;font-size:15.5px;margin:6px 0 8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.zw-h small{font-weight:400;color:var(--muted);font-size:12.5px}
+.zw-goal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 20px}
+@media(max-width:700px){.zw-goal{grid-template-columns:1fr}}
+.zw-k{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px}
+.zw-k .t{display:flex;justify-content:space-between;font-weight:600;font-size:14px;margin-bottom:6px}
+.zw-k .bar{height:8px;border-radius:8px;background:#ececf1;overflow:hidden;margin-top:8px}
+.zw-k .bar i{display:block;height:100%;border-radius:8px}
+.zw-k .rest{font-size:12.5px;color:var(--muted);margin-top:5px}
+.zw-gsum{font-size:13.5px;margin:-10px 0 20px;color:var(--muted)}
+.zw-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.zw-add select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;min-width:240px}
+.zw-new{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;margin-bottom:14px}
+.zw-new .krow{grid-template-columns:minmax(0,1fr) 64px 30px}
+.zw-new .nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:4px}
+.zw-new .kpick{width:100%;font:inherit;border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:#fff}
+.zw-empty{color:var(--muted);font-size:13.5px;padding:10px 12px;background:#f7f7f9;border-radius:12px;margin-bottom:14px}
 </style>
 <script>
-/* ===== Commitment-Check: wer liefert heute noch wie viel (gleicher Teams-Workflow) ===== */
+/* ===== Zwischenstand (eigener Tab): Tagesziel heute + neu reingekommene wichtige KPIs ===== */
 (function(){
   const GK=[['onb','ONB'],['off','OFF'],['vbac','VBAC']];
+  const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
+  const PAL=[['#dcecff','#2a64b8'],['#ffe1ea','#b8365f'],['#ece6ff','#6a4fc9'],['#f2e3ff','#8f43bd'],['#ffe9da','#b85c17'],['#dff5e8','#23874f'],['#fff3c4','#8a6a00'],['#d8f4f4','#16807f'],['#e6f0db','#4f7a26']];
+  const kc=id=>PAL[KPIS.findIndex(k=>k.id===id)%PAL.length];
+  const PRIO=['refi','ep','ffmt','uis','ret'];
   const hhmm=()=>new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-  const L=()=>{S.commit=S.commit||[];return S.commit;};
-  const n0=v=>Math.max(0,+v||0);
-  const tot=r=>GK.reduce((a,[k])=>a+n0(r[k]),0);
-  const parts=r=>GK.filter(([k])=>n0(r[k])>0).map(([k,l])=>`${n0(r[k])} ${l}`).join(' · ');
-  function sums(){const s={all:0};GK.forEach(([k])=>{s[k]=L().reduce((a,r)=>a+n0(r[k]),0);s.all+=s[k];});return s;}
+  const T=()=>{S.today=S.today||{};return S.today;};
+  const NW=()=>{S.zwNew=S.zwNew||[];return S.zwNew;};
+  const num=v=>v===undefined||v===''||v===null?null:+v;
+  const kOf=id=>KPIS.find(k=>k.id===id);
+  const bsum=b=>b.rows.reduce((a,r)=>a+(+r.v||0),0);
+  function goal(){
+    const t=T(),parts=GK.map(([k,l])=>{const s=num(t[k+'S']),i=num(t[k+'I']);return {k,l,s,i,p:s>0&&i!==null?Math.round(i/s*100):null};});
+    const ok=parts.filter(x=>x.p!==null),ss=ok.reduce((a,x)=>a+x.s,0),si=ok.reduce((a,x)=>a+x.i,0);
+    return {parts,ok,tot:ok.length?{s:ss,i:si,p:Math.round(si/ss*100)}:null};
+  }
+  const restTxt=x=>x.i>=x.s?`${x.i} von ${x.s} · ✅ erreicht${x.i>x.s?` (+${x.i-x.s})`:''}`:`${x.i} von ${x.s} · noch ${x.s-x.i}`;
 
-  function buildCm(){
+  function buildZw(){
+    const g=goal(),rows=window.ciRows;
     const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
-    const s=sums(),list=L().filter(r=>tot(r)>0).sort((a,b)=>tot(b)-tot(a)||a.n.localeCompare(b.n,'de'));
-    const body=[{type:'TextBlock',text:`⏰ Commitment-Check · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true},
-      {type:'TextBlock',text:`Noch offen: **${s.all} Einheiten**`+(s.all?' · '+GK.filter(([k])=>s[k]).map(([k,l])=>`${l} ${s[k]}`).join(' · '):''),spacing:'None',wrap:true}];
-    if(list.length){
-      body.push({type:'TextBlock',text:'👇 Von euch kommt heute noch:',weight:'Bolder',spacing:'Medium'});
-      body.push(window.ciRows(list.map(r=>[at(r.n),tot(r),parts(r)])));
-      body.push({type:'TextBlock',text:'👉 Bitte bis Feierabend nachziehen – ihr schafft das! 💪',wrap:true,spacing:'Medium'});
-    }else body.push({type:'TextBlock',text:'🎉 Alle Commitments erfüllt – stark, Team! 💪',wrap:true,spacing:'Medium'});
+    const body=[{type:'TextBlock',text:`⏱️ Zwischenstand · ${fdLong(S.date)} · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true}];
+    if(g.tot){
+      const clr=p=>p>=100?'Good':'Accent';
+      body.push({type:'TextBlock',text:'🎯 Tagesziel heute',weight:'Bolder',spacing:'Large'});
+      body.push(rows(g.ok.map(x=>[x.l,`${x.p} %`,restTxt(x),0,clr(x.p)]).concat([['Gesamt',`${g.tot.p} %`,restTxt(g.tot),1,clr(g.tot.p)]])));
+    }
+    const nb=NW().filter(b=>bsum(b)>0);
+    if(nb.length){
+      body.push({type:'TextBlock',text:'🆕 Neu reingekommen',weight:'Bolder',spacing:'Large'});
+      nb.forEach(b=>{
+        const items=[{type:'ColumnSet',columns:[
+          {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`**${short(kOf(b.k).label)}**`,wrap:true}]},
+          {type:'Column',width:'auto',items:[{type:'TextBlock',text:`**${bsum(b)} neu**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
+        items.push(rows(b.rows.filter(r=>+r.v>0).map(r=>[at(r.n),+r.v,'']),true));
+        body.push({type:'Container',style:'emphasis',spacing:'Small',items});
+      });
+    }
+    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die neuen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel! 💪':'👉 Dranbleiben – wir holen das Tagesziel! 💪',wrap:true,spacing:'Large'});
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
   }
-  window.buildCmCard=buildCm;
+  window.buildZwCard=buildZw;
 
-  // UI
+  // ---- UI ----
   const card=document.createElement('div');card.className='card';card.id='zwCard';
-  card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏰</span>Commitment-Check</h2>
-    <p class="sub">Für den Push zwischendurch: BBG eintippen und eintragen, wie viele Einheiten heute noch kommen. Erledigt? Zahl runtersetzen oder Zeile entfernen. Gepostet wird über denselben Teams-Workflow – kurz &amp; knackig mit @Markierung.</p>
-    <div class="cm-sum" id="cmSum"></div>
-    <div class="cm-list" id="cmList"></div>
-    <div class="cm-new"><input type="text" class="e-pick" list="bbgList" autocomplete="off" id="cmNew" placeholder="＋ BBG-Namen tippen …"></div>
-    <div class="btns" style="margin-top:14px"><button class="b" type="button" id="bZw">⏰ Commitment-Check in Teams posten</button>
-      <button class="b ghost" type="button" id="cmClear">Liste leeren</button></div>`;
+  card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏱️</span>Zwischenstand</h2>
+    <p class="sub">Für den Push während des Tages – geht über denselben Teams-Workflow.</p>
+    <div class="zw-h">🎯 Tagesziel heute <small>Soll &amp; aktuelles Ist aus Power BI</small></div>
+    <div class="zw-goal">${GK.map(([k,l])=>`<div class="zw-k" id="zk_${k}"><div class="t"><span>${l}</span><span class="pc">–</span></div>
+      <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
+      <div class="bar"><i></i></div><div class="rest"></div></div>`).join('')}</div>
+    <div class="zw-gsum" id="zwGsum"></div>
+    <div class="zw-h">🆕 Neu reingekommen <small>wichtige KPIs auswählen und die BBGs dazu eintragen</small></div>
+    <div class="zw-add"><select id="zwSel"></select><button class="addbtn" type="button" id="zwAddK">＋ KPI hinzufügen</button></div>
+    <div id="zwNew"></div>
+    <div class="btns"><button class="b" type="button" id="bZw">⏱️ Zwischenstand in Teams posten</button>
+      <button class="b ghost" type="button" id="zwClear">Zwischenstand leeren</button></div>`;
   document.querySelector('.outs').before(card);
+  // Webhook-Einstellungen in beiden Tabs sichtbar
+  const wf=$('wfBox')&&$('wfBox').closest('.card');if(wf)wf.id='wfCardHolder';
 
-  function render(focus){
-    $('cmList').innerHTML=L().map((r,i)=>`<div class="cm-row"><div class="nm">${esc(r.n)}</div>
-      ${GK.map(([k,l])=>`<label>${l}<input type="number" min="0" data-cm="${i}" data-k="${k}" value="${esc(r[k]??'')}" placeholder="–"></label>`).join('')}
-      <div class="tot" id="cmT${i}">${tot(r)||'–'}</div><button type="button" class="e-del" data-cmdel="${i}" title="Entfernen">✕</button></div>`).join('');
-    if(focus!==undefined){const f=$('cmList').querySelector(`[data-cm="${focus}"]`);f&&f.focus();}
+  const t0=T();card.querySelectorAll('[data-t]').forEach(inp=>{inp.value=t0[inp.dataset.t]??'';inp.addEventListener('input',()=>{T()[inp.dataset.t]=inp.value;update();});});
+
+  function fillSel(){
+    const used=NW().map(b=>b.k);
+    const opt=k=>`<option value="${k.id}">${esc(short(k.label))}</option>`;
+    const pr=PRIO.map(kOf).filter(k=>k&&!used.includes(k.id)),rest=KPIS.filter(k=>!PRIO.includes(k.id)&&!used.includes(k.id));
+    $('zwSel').innerHTML=(pr.length?`<optgroup label="Wichtig">${pr.map(opt).join('')}</optgroup>`:'')+(rest.length?`<optgroup label="Weitere KPIs">${rest.map(opt).join('')}</optgroup>`:'');
+    $('zwSel').disabled=$('zwAddK').disabled=!(pr.length+rest.length);
   }
-  function paint(){const s=sums();
-    $('cmSum').innerHTML=`<span class="cm-pill">📌 noch offen: <b>${s.all}</b></span>`+GK.map(([k,l])=>`<span class="cm-pill">${l} <b>${s[k]}</b></span>`).join('');
-    L().forEach((r,i)=>{const t=$('cmT'+i);if(t)t.textContent=tot(r)||'–';});}
-  $('cmNew').addEventListener('change',e=>{
-    const v=e.target.value.trim(),n=TEAM.map(t=>t.name).find(x=>x.toLowerCase()===v.toLowerCase());if(!n)return;
-    e.target.value='';let i=L().findIndex(r=>r.n===n);
-    if(i<0){L().push({n});L().sort((a,b)=>a.n.localeCompare(b.n,'de'));i=L().findIndex(r=>r.n===n);}
-    render(i);update();
-  });
-  $('cmList').addEventListener('input',e=>{const t=e.target;if(t.dataset.cm===undefined)return;L()[+t.dataset.cm][t.dataset.k]=t.value;update();});
-  $('cmList').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.cm!==undefined){e.preventDefault();$('cmNew').focus();}});
-  $('cmList').addEventListener('click',e=>{const i=e.target.dataset.cmdel;if(i===undefined)return;L().splice(+i,1);render();update();});
-  $('cmClear').onclick=()=>{if(L().length&&!confirm('Commitment-Liste komplett leeren?'))return;S.commit=[];render();update();};
-  const go=()=>{if(!L().some(r=>tot(r)>0)&&!confirm('Es ist niemand mit offenen Einheiten eingetragen.\n\nTrotzdem „Alle Commitments erfüllt“ posten?'))return;window.ciPost(buildCm,'Commitment-Check');};
+  function renderNew(focusK){
+    const B=NW();
+    $('zwNew').innerHTML=B.length?`<div class="zw-new">${B.map((b,bi)=>{const [bg,fg]=kc(b.k),s=bsum(b);
+      return `<div class="kcard" style="--kc:${bg};--kf:${fg}"><div class="khead"><div class="ktitle">${esc(kOf(b.k).label)}</div>
+        <div style="display:flex;gap:6px;align-items:center"><div class="ktot${s?' on':''}" id="zwT${bi}">${s}</div><button type="button" class="e-del" data-zwdelk="${bi}" title="KPI entfernen">✕</button></div></div>
+        <div class="klist">${b.rows.map((r,ri)=>`<div class="krow"><div class="nm">${esc(r.n)}</div><input type="number" min="0" class="kval${+r.v>0?' has':''}" data-zb="${bi}" data-zr="${ri}" value="${esc(r.v??'')}" placeholder="–"><button type="button" class="e-del" data-zb="${bi}" data-zrdel="${ri}" title="Entfernen">✕</button></div>`).join('')}
+          <div class="krow"><input type="text" class="kpick e-pick" list="bbgList" autocomplete="off" placeholder="＋ BBG-Namen tippen …" data-zbadd="${bi}"></div></div></div>`;}).join('')}</div>`
+      :`<div class="zw-empty">Noch nichts ausgewählt – z. B. „ReFi Huddle“ oder „Emergency Replanning“ wählen und hinzufügen.</div>`;
+    fillSel();
+    if(focusK!==undefined){const el=$('zwNew').querySelector(`[data-zbadd="${focusK}"]`);el&&el.focus();}
+  }
+  $('zwAddK').onclick=()=>{const k=$('zwSel').value;if(!k)return;NW().push({k,rows:[]});renderNew(NW().length-1);update();};
+  $('zwNew').addEventListener('change',e=>{const t=e.target;if(t.dataset.zbadd===undefined)return;
+    const n=TEAM.map(x=>x.name).find(x=>x.toLowerCase()===t.value.trim().toLowerCase());if(!n)return;
+    t.value='';const bi=t.dataset.zbadd,b=NW()[+bi];let ri=b.rows.findIndex(r=>r.n===n);if(ri<0){b.rows.push({n,v:''});ri=b.rows.length-1;}
+    setTimeout(()=>{renderNew();update();const f=$('zwNew').querySelector(`[data-zb="${bi}"][data-zr="${ri}"]`);f&&f.focus();},0);});
+  $('zwNew').addEventListener('input',e=>{const t=e.target;if(t.dataset.zr===undefined)return;const b=NW()[+t.dataset.zb];b.rows[+t.dataset.zr].v=t.value;
+    t.classList.toggle('has',+t.value>0);const s=bsum(b),el=$('zwT'+t.dataset.zb);el.textContent=s;el.classList.toggle('on',s>0);update();});
+  $('zwNew').addEventListener('keydown',e=>{const t=e.target;if(e.key==='Enter'&&t.dataset.zr!==undefined){e.preventDefault();const a=$('zwNew').querySelector(`[data-zbadd="${t.dataset.zb}"]`);a&&a.focus();}});
+  $('zwNew').addEventListener('click',e=>{const t=e.target;
+    if(t.dataset.zwdelk!==undefined){NW().splice(+t.dataset.zwdelk,1);renderNew();update();}
+    else if(t.dataset.zrdel!==undefined){NW()[+t.dataset.zb].rows.splice(+t.dataset.zrdel,1);renderNew();update();}});
+  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und neu reingekommene KPIs leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');renderNew();update();};
+  const go=()=>{const g=goal();if(!g.tot&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder neue KPIs eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
   $('bZw').onclick=go;
-  const ab=document.createElement('button');ab.className='ab-btn sec';ab.id='abZw';ab.type='button';ab.textContent='⏰ Commitment-Check';ab.onclick=go;
-  $('abPost').before(ab);
-  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();render();update();};
-  const oU=update;update=function(){paint();oU();};
-  render();update();
+  const ab=document.createElement('button');ab.className='ab-btn';ab.id='abZw';ab.type='button';ab.textContent='⏱️ Zwischenstand posten';ab.onclick=go;
+  $('abPost').after(ab);
+
+  function refresh(){
+    const g=goal();
+    g.parts.forEach(x=>{const el=$('zk_'+x.k),c=x.p===null?'#d2d2d7':x.p>=100?'#30b85a':'#0a84ff';
+      el.querySelector('.pc').textContent=x.p===null?'–':x.p+' %';el.querySelector('.pc').style.color=x.p===null?'':c;
+      el.querySelector('.bar i').style.cssText=`width:${x.p===null?0:Math.min(100,x.p)}%;background:${c}`;
+      el.querySelector('.rest').textContent=x.p===null?'':restTxt(x);});
+    $('zwGsum').innerHTML=g.tot?`<b style="color:var(--text)">Gesamt: ${g.tot.p} %</b> · ${restTxt(g.tot)}`:'';
+  }
+  // ---- Tabs ----
+  const hero=document.querySelector('.hero'),H2=hero.querySelector('h2'),P=hero.querySelector('p');
+  const TXT={ci:['Daily Check-In.',P.textContent],zw:['Zwischenstand.','Tagesziel aktualisieren und neu reingekommene wichtige KPIs den BBGs zuordnen – kurz &amp; knackig in Teams posten.']};
+  const tabs=document.createElement('div');tabs.className='tabs';tabs.innerHTML='<button type="button" data-tab="ci">📊 Daily Check-In</button><button type="button" data-tab="zw">⏱️ Zwischenstand</button>';
+  hero.appendChild(tabs);
+  function setTab(t){document.body.classList.toggle('tab-zw',t==='zw');tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+    H2.textContent=TXT[t][0];P.innerHTML=TXT[t][1];try{localStorage.setItem('ciTab',t);}catch(e){}}
+  tabs.onclick=e=>{const t=e.target.dataset.tab;if(t){setTab(t);window.scrollTo({top:0,behavior:'smooth'});}};
+  let t1='ci';try{t1=localStorage.getItem('ciTab')||'ci';}catch(e){}setTab(t1);
+
+  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();renderNew();update();};
+  const oU=update;update=function(){refresh();oU();};
+  renderNew();update();
 })();
 </script>
 </body>
