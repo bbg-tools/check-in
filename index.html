@@ -1178,10 +1178,17 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
   // Kompakt: eine Spalte je Feld mit untereinander stehenden Zeilen (hält die Karte unter Teams' ~28-KB-Grenze)
   function rows(list,inBox){
     const sep=b=>b?{separator:true}:{};
-    const cols=[
-      {type:'Column',width:inBox?'192px':'210px',items:list.map(([l,,,b])=>({type:'TextBlock',text:b?`**${l}**`:l,...sep(b)}))},
-      {type:'Column',width:'50px',items:list.map(([,v,,b,c])=>({type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right',...(c?{color:c}:{}),...sep(b)}))}];
-    if(list.some(r=>r[2]))cols.push({type:'Column',width:'stretch',items:list.map(([,,x,b,,xc])=>({type:'TextBlock',text:x||' ',...(xc?{color:xc}:{isSubtle:true}),...sep(b)}))});
+    const lw=inBox?'192px':'210px';
+    const L=([l,,,b])=>({type:'TextBlock',text:b?`**${l}**`:l,...sep(b)});
+    const V=([,v,,b,c])=>({type:'TextBlock',text:`**${v}**`,horizontalAlignment:'Right',...(c?{color:c}:{}),...sep(b)});
+    const X=([,,x,b,,xc])=>({type:'TextBlock',text:x,...(xc?{color:xc}:{isSubtle:true}),...sep(b)});
+    const withX=list.filter(r=>r[2]).length;
+    // Gemischt (manche Zeilen mit Zusatz, manche ohne): Zeile für Zeile, damit nichts verrutscht
+    if(withX&&withX<list.length)return {type:'Container',spacing:'Small',items:list.map(r=>({type:'ColumnSet',spacing:'Small',columns:[
+      {type:'Column',width:lw,items:[L(r)]},{type:'Column',width:'50px',items:[V(r)]}].concat(r[2]?[{type:'Column',width:'stretch',items:[X(r)]}]:[])}))};
+    // Einheitlich: kompakt spaltenweise (hält die Karte klein)
+    const cols=[{type:'Column',width:lw,items:list.map(L)},{type:'Column',width:'50px',items:list.map(V)}];
+    if(withX)cols.push({type:'Column',width:'stretch',items:list.map(X)});
     return {type:'ColumnSet',spacing:'Small',columns:cols};
   }
   window.ciRows=rows;
@@ -1501,7 +1508,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
       st.push(`font-size:${SZ[x.size||'Default']}px`);if(x.weight==='Bolder')st.push('font-weight:700');
       if(x.color&&CL[x.color])st.push('color:'+CL[x.color]);else if(x.isSubtle)st.push('color:#616161');
       if(x.horizontalAlignment==='Right')st.push('text-align:right');
-      return `<div class="tb${x.wrap?'':' nw'}${cls}" style="${st.join(';')}">${md(x.text||'')||'&nbsp;'}</div>`;
+      return `<div class="tb${x.wrap?'':' nw'}${cls}" style="${st.join(';')}">${(x.text||'').trim()?md(x.text):'&nbsp;'}</div>`;
     }
     if(x.type==='ColumnSet'){
       h=(x.columns||[]).map(c=>{const w=c.width==='auto'?'flex:0 0 auto':c.width==='stretch'||!c.width?'flex:1 1 0':/px$/.test(c.width)?`flex:0 0 ${c.width}`:`flex:${c.width} 1 0`;
