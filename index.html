@@ -36,8 +36,8 @@ header button.b{background:#1d1d1f;border-color:#1d1d1f;color:#fff}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 
 /* Kennzahlen */
-.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin-bottom:20px}
-@media(max-width:1350px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+@media(max-width:1000px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .stat{border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);background:linear-gradient(135deg,var(--c1),var(--c2))}
 .stat .lbl{font-size:13px;font-weight:600;color:var(--fg);display:flex;align-items:center;gap:6px}
@@ -207,6 +207,16 @@ details textarea{width:100%;min-height:240px;margin-top:10px;font-family:ui-mono
       <div class="lbl">🔁 Backlog VBAC</div>
       <input type="number" min="0" id="totBlVbac" placeholder="–" aria-label="Backlog VBAC">
       <div class="prev" id="prevBlVbac"></div>
+    </div>
+    <div class="stat" style="--c1:#ffe1ea;--c2:#fff2f6;--fg:#b8365f">
+      <div class="lbl">⭐ NPS (this Month)</div>
+      <input type="number" step="any" id="totNpsM" placeholder="–" aria-label="NPS this Month">
+      <div class="prev" id="prevNpsM"></div>
+    </div>
+    <div class="stat" style="--c1:#f2e3ff;--c2:#f9f2ff;--fg:#8f43bd">
+      <div class="lbl">⭐ NPS (this Week)</div>
+      <input type="number" step="any" id="totNpsW" placeholder="–" aria-label="NPS this Week">
+      <div class="prev" id="prevNpsW"></div>
     </div>
     <div class="stat" style="--c1:#dff5e8;--c2:#f0faf4;--fg:#23874f">
       <div class="lbl">👥 Heute anwesend</div>
@@ -482,24 +492,25 @@ function label(n){
 }
 
 /* ---------- Gesamtzahlen ---------- */
-const TOT=[['cases','totCases','prevCases','Cases gesamt'],['cwp','totCwp','prevCwp','Closing w/ active Problems'],['blOff','totBlOff','prevBlOff','Backlog Offboarding'],['blVbac','totBlVbac','prevBlVbac','Backlog VBAC']];
+const TOT=[['cases','totCases','prevCases','Cases gesamt'],['cwp','totCwp','prevCwp','Closing w/ active Problems'],['blOff','totBlOff','prevBlOff','Backlog Offboarding'],['blVbac','totBlVbac','prevBlVbac','Backlog VBAC'],['npsM','totNpsM','prevNpsM','NPS (this Month)'],['npsW','totNpsW','prevNpsW','NPS (this Week)']];
 function totVal(k){const v=(S.tot||{})[k];return v===undefined||v===''?null:+v;}
 function trend(k){
   const v=totVal(k),pv=S.prevTot&&S.prevTot[k]!==undefined&&S.prevTot[k]!==''?+S.prevTot[k]:null;
   if(v===null||pv===null)return null;
-  return {d:v-pv,pv};
+  return {d:Math.round((v-pv)*10)/10,pv};
 }
-function trendTxt(k){const t=trend(k);if(!t)return '';return t.d===0?' (= Vortag)':` (${t.d>0?'▲ +'+t.d:'▼ −'+Math.abs(t.d)} ggü. Vortag)`;}
+function trendTxt(k){const t=trend(k);if(!t)return '';const f=x=>String(x).replace('.',',');return t.d===0?' (= Vortag)':` (${t.d>0?'▲ +'+f(t.d):'▼ −'+f(Math.abs(t.d))} ggü. Vortag)`;}
 TOT.forEach(([k,id])=>{$(id).value=totVal(k)??'';$(id).addEventListener('input',()=>{S.tot=S.tot||{};S.tot[k]=$(id).value;update();});});
 function refreshTot(){
   TOT.forEach(([k,,pid])=>{
     const t=trend(k),el=$(pid);
     if(S.prevTot&&S.prevTot[k]!==undefined&&S.prevTot[k]!==''){
-      el.innerHTML='Vortag: '+esc(S.prevTot[k])+(t?(t.d===0?' · unverändert':` · <span class="${t.d>0?'up':'down'}">${t.d>0?'▲ +'+t.d:'▼ −'+Math.abs(t.d)}</span>`):'');
+      el.innerHTML='Vortag: '+esc(S.prevTot[k])+(t?(t.d===0?' · unverändert':` · <span class="${(t.d>0)!==/^nps/.test(k)?'up':'down'}">${t.d>0?'▲ +'+t.d:'▼ −'+Math.abs(t.d)}</span>`):'');
     }else el.textContent='';
   });
 }
-function totLines(){return TOT.filter(([k])=>totVal(k)!==null).map(([k,,,l])=>({l,v:totVal(k),t:trendTxt(k)}));}
+const deN=x=>String(x).replace('.',',');
+function totLines(){return TOT.filter(([k])=>totVal(k)!==null).map(([k,,,l])=>({l,v:deN(totVal(k)),t:trendTxt(k)}));}
 
 /* ---------- Screenshots ---------- */
 const SHOTS=[];
