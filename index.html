@@ -1285,6 +1285,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
 .zw-k .bar{height:8px;border-radius:8px;background:#ececf1;overflow:hidden;margin-top:8px}
 .zw-k .bar i{display:block;height:100%;border-radius:8px}
 .zw-k .rest{font-size:12.5px;color:var(--muted);margin-top:5px}
+.zw-nogoal .zw-goal,.zw-nogoal .zw-gsum{opacity:.4}
 .zw-gsum{font-size:13.5px;margin:-10px 0 20px;color:var(--muted)}
 .zw-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
 .zw-add select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;min-width:240px}
@@ -1300,13 +1301,14 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const GK=[['onb','ONB'],['off','OFF'],['vbac','VBAC']];
   const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
   const PAL=[['#dcecff','#2a64b8'],['#ffe1ea','#b8365f'],['#ece6ff','#6a4fc9'],['#f2e3ff','#8f43bd'],['#ffe9da','#b85c17'],['#dff5e8','#23874f'],['#fff3c4','#8a6a00'],['#d8f4f4','#16807f'],['#e6f0db','#4f7a26']];
-  const kc=id=>PAL[KPIS.findIndex(k=>k.id===id)%PAL.length];
-  const PRIO=['refi','ep','ffmt','uis','ret'];
+  const kc=id=>PAL[KPIS.findIndex(k=>k.id===(id==='bvm'?'bv':id))%PAL.length];
   const hhmm=()=>new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
   const T=()=>{S.today=S.today||{};return S.today;};
   const NW=()=>{S.zwNew=S.zwNew||[];return S.zwNew;};
   const num=v=>v===undefined||v===''||v===null?null:+v;
-  const kOf=id=>KPIS.find(k=>k.id===id);
+  // Zwischenstand-Auswahl: Bauvorbereitung getrennt für heute/morgen
+  const ZK=KPIS.flatMap(k=>k.id==='bv'?[{id:'bv',label:'Bauvorbereitung offen (heute)',name:'Bauvorbereitung heute'},{id:'bvm',label:'Bauvorbereitung offen (morgen)',name:'Bauvorbereitung morgen'}]:[{id:k.id,label:k.label,name:short(k.label)}]);
+  const kOf=id=>ZK.find(k=>k.id===id);
   const bsum=b=>b.rows.reduce((a,r)=>a+(+r.v||0),0);
   function goal(){
     const t=T(),parts=GK.map(([k,l])=>{const s=num(t[k+'S']),i=num(t[k+'I']);return {k,l,s,i,p:s>0&&i!==null?Math.round(i/s*100):null};});
@@ -1319,23 +1321,24 @@ body.tab-zw .actionbar{justify-content:flex-end}
     const g=goal(),rows=window.ciRows;
     const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
     const body=[{type:'TextBlock',text:`⏱️ Zwischenstand · ${fdLong(S.date)} · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true}];
-    if(g.tot){
+    const showG=T().show!==false&&g.tot;
+    if(showG){
       const clr=p=>p>=100?'Good':'Accent';
       body.push({type:'TextBlock',text:'🎯 Tagesziel heute',weight:'Bolder',spacing:'Large'});
       body.push(rows(g.ok.map(x=>[x.l,`${x.p} %`,restTxt(x),0,clr(x.p)]).concat([['Gesamt',`${g.tot.p} %`,restTxt(g.tot),1,clr(g.tot.p)]])));
     }
     const nb=NW().filter(b=>bsum(b)>0);
     if(nb.length){
-      body.push({type:'TextBlock',text:'📌 Wichtige & offene To-Do’s',weight:'Bolder',spacing:'Large'});
+      body.push({type:'TextBlock',text:'📌 Offene To-Do’s',weight:'Bolder',spacing:'Large'});
       nb.forEach(b=>{
         const items=[{type:'ColumnSet',columns:[
-          {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`**${short(kOf(b.k).label)}**`,wrap:true}]},
+          {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`**${kOf(b.k).name}**`,wrap:true}]},
           {type:'Column',width:'auto',items:[{type:'TextBlock',text:`**${bsum(b)} offen**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
         items.push(rows(b.rows.filter(r=>+r.v>0).map(r=>[at(r.n),+r.v,'']),true));
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
       });
     }
-    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die offenen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel!':'👉 Dranbleiben – wir holen das Tagesziel!',wrap:true,spacing:'Large'});
+    body.push({type:'TextBlock',text:showG?(nb.length?'👉 Bitte die offenen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel!':'👉 Dranbleiben – wir holen das Tagesziel!'):'👉 Bitte die offenen Punkte priorisiert bearbeiten. Danke! 🙌',wrap:true,spacing:'Large'});
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
   }
@@ -1345,12 +1348,12 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const card=document.createElement('div');card.className='card';card.id='zwCard';
   card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏱️</span>Zwischenstand</h2>
     <p class="sub">Für den Push während des Tages – geht über denselben Teams-Workflow.</p>
-    <div class="zw-h">🎯 Tagesziel heute <small>Soll &amp; aktuelles Ist aus Power BI</small></div>
+    <div class="zw-h">🎯 Tagesziel heute <small>Soll &amp; aktuelles Ist aus Power BI</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShow"> Mit posten</label></div>
     <div class="zw-goal">${GK.map(([k,l])=>`<div class="zw-k" id="zk_${k}"><div class="t"><span>${l}</span><span class="pc">–</span></div>
       <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
       <div class="bar"><i></i></div><div class="rest"></div></div>`).join('')}</div>
     <div class="zw-gsum" id="zwGsum"></div>
-    <div class="zw-h">📌 Wichtige &amp; offene To-Do’s <small>KPI auswählen und die BBGs dazu eintragen</small></div>
+    <div class="zw-h">📌 Offene To-Do’s <small>KPI auswählen und die BBGs dazu eintragen</small></div>
     <div class="zw-add"><select id="zwSel"></select><button class="addbtn" type="button" id="zwAddK">＋ KPI hinzufügen</button></div>
     <div id="zwNew"></div>
     <div class="btns"><button class="b" type="button" id="bZw">⏱️ Zwischenstand in Teams posten</button>
@@ -1359,14 +1362,14 @@ body.tab-zw .actionbar{justify-content:flex-end}
   // Webhook-Einstellungen in beiden Tabs sichtbar
   const wf=$('wfBox')&&$('wfBox').closest('.card');if(wf)wf.id='wfCardHolder';
 
+  $('zwShow').checked=T().show!==false;$('zwShow').onchange=()=>{T().show=$('zwShow').checked;card.classList.toggle('zw-nogoal',!T().show);update();};card.classList.toggle('zw-nogoal',T().show===false);
   const t0=T();card.querySelectorAll('[data-t]').forEach(inp=>{inp.value=t0[inp.dataset.t]??'';inp.addEventListener('input',()=>{T()[inp.dataset.t]=inp.value;update();});});
 
   function fillSel(){
     const used=NW().map(b=>b.k);
-    const opt=k=>`<option value="${k.id}">${esc(short(k.label))}</option>`;
-    const pr=PRIO.map(kOf).filter(k=>k&&!used.includes(k.id)),rest=KPIS.filter(k=>!PRIO.includes(k.id)&&!used.includes(k.id));
-    $('zwSel').innerHTML=(pr.length?`<optgroup label="Wichtig">${pr.map(opt).join('')}</optgroup>`:'')+(rest.length?`<optgroup label="Weitere KPIs">${rest.map(opt).join('')}</optgroup>`:'');
-    $('zwSel').disabled=$('zwAddK').disabled=!(pr.length+rest.length);
+    const free=ZK.filter(k=>!used.includes(k.id));
+    $('zwSel').innerHTML=free.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('');
+    $('zwSel').disabled=$('zwAddK').disabled=!free.length;
   }
   function renderNew(focusK){
     const B=NW();
@@ -1375,7 +1378,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
         <div style="display:flex;gap:6px;align-items:center"><div class="ktot${s?' on':''}" id="zwT${bi}">${s}</div><button type="button" class="e-del" data-zwdelk="${bi}" title="KPI entfernen">✕</button></div></div>
         <div class="klist">${b.rows.map((r,ri)=>`<div class="krow"><div class="nm">${esc(r.n)}</div><input type="number" min="0" class="kval${+r.v>0?' has':''}" data-zb="${bi}" data-zr="${ri}" value="${esc(r.v??'')}" placeholder="–"><button type="button" class="e-del" data-zb="${bi}" data-zrdel="${ri}" title="Entfernen">✕</button></div>`).join('')}
           <div class="krow"><input type="text" class="kpick e-pick" list="bbgList" autocomplete="off" placeholder="＋ BBG-Namen tippen …" data-zbadd="${bi}"></div></div></div>`;}).join('')}</div>`
-      :`<div class="zw-empty">Noch nichts ausgewählt – z. B. „ReFi Huddle“ oder „Emergency Replanning“ wählen und hinzufügen.</div>`;
+      :`<div class="zw-empty">Noch nichts ausgewählt – z. B. „ReFi Huddle“, „Emergency Replanning“ oder „Bauvorbereitung morgen“ wählen und hinzufügen.</div>`;
     fillSel();
     if(focusK!==undefined){const el=$('zwNew').querySelector(`[data-zbadd="${focusK}"]`);el&&el.focus();}
   }
@@ -1390,8 +1393,8 @@ body.tab-zw .actionbar{justify-content:flex-end}
   $('zwNew').addEventListener('click',e=>{const t=e.target;
     if(t.dataset.zwdelk!==undefined){NW().splice(+t.dataset.zwdelk,1);renderNew();update();}
     else if(t.dataset.zrdel!==undefined){NW()[+t.dataset.zb].rows.splice(+t.dataset.zrdel,1);renderNew();update();}});
-  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und To-Do’s leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');renderNew();update();};
-  const go=()=>{const g=goal();if(!g.tot&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder neue KPIs eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
+  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und To-Do’s leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');$('zwShow').checked=true;card.classList.remove('zw-nogoal');renderNew();update();};
+  const go=()=>{const g=goal();if(!(T().show!==false&&g.tot)&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder offene To-Do’s eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
   $('bZw').onclick=go;
   const ab=document.createElement('button');ab.className='ab-btn';ab.id='abZw';ab.type='button';ab.textContent='⏱️ Zwischenstand posten';ab.onclick=go;
   $('abPost').after(ab);
@@ -1406,7 +1409,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   }
   // ---- Tabs ----
   const hero=document.querySelector('.hero'),H2=hero.querySelector('h2'),P=hero.querySelector('p');
-  const TXT={ci:['Daily Check-In.',P.textContent],zw:['Zwischenstand.','Tagesziel aktualisieren und wichtige bzw. offene To-Do’s den BBGs zuordnen – kurz &amp; knackig in Teams posten.']};
+  const TXT={ci:['Daily Check-In.',P.textContent],zw:['Zwischenstand.','Tagesziel aktualisieren und offene To-Do’s den BBGs zuordnen – kurz &amp; knackig in Teams posten.']};
   const tabs=document.createElement('div');tabs.className='tabs';tabs.innerHTML='<button type="button" data-tab="ci">📊 Daily Check-In</button><button type="button" data-tab="zw">⏱️ Zwischenstand</button>';
   hero.appendChild(tabs);
   function setTab(t){document.body.classList.toggle('tab-zw',t==='zw');tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
@@ -1414,7 +1417,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   tabs.onclick=e=>{const t=e.target.dataset.tab;if(t){setTab(t);window.scrollTo({top:0,behavior:'smooth'});}};
   let t1='ci';try{t1=localStorage.getItem('ciTab')||'ci';}catch(e){}setTab(t1);
 
-  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();renderNew();update();};
+  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();$('zwShow').checked=T().show!==false;card.classList.toggle('zw-nogoal',!$('zwShow').checked);renderNew();update();};
   const oU=update;update=function(){refresh();oU();};
   renderNew();update();
 })();
