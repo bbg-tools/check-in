@@ -791,7 +791,7 @@ document.addEventListener('input',()=>{S.carried=false;},{once:true});
   $('absAdd').onclick=()=>{absBlank++;renderAbs();const s=$('absList').querySelector('[data-abs-new]:last-of-type')||[...$('absList').querySelectorAll('[data-abs-new]')].pop();s&&s.focus();};
   $('absList').addEventListener('change',e=>{
     const t=e.target,d=t.dataset;
-    if(d.absNew){if(!names().includes(t.value))return;if(S.rows[t.value].status!=='da'){toast(t.value+' ist bereits eingetragen');return;}absBlank=Math.max(0,absBlank-1);setStatus(t.value,'urlaub');}
+    if(d.absNew){if(!names().includes(t.value))return;if(S.rows[t.value].status!=='da'){toast(t.value+' ist bereits eingetragen');return;}absBlank=Math.max(0,absBlank-1);const nv=t.value;t.value='';setStatus(nv,'urlaub');}
     else if(d.absName){const old=d.absName,nw=t.value;if(!nw||nw===old)return;const st=S.rows[old].status;setStatus(old,'da');setStatus(nw,st);}
     else if(d.absSt){setStatus(d.absSt,t.value);}
     else if(d.absVert){S.rows[d.absVert].vert=t.value;}
@@ -1357,7 +1357,9 @@ body.tab-zw .actionbar{justify-content:flex-end}
         const items=[{type:'ColumnSet',columns:[
           {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`**${kOf(b.k).name}**`,wrap:true}]},
           {type:'Column',width:'auto',items:[{type:'TextBlock',text:`**${bsum(b)} offen**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
-        items.push(rows(b.rows.filter(r=>+r.v>0).map(r=>[at(r.n),+r.v,'']),true));
+        // Abwesende: Vertreter aus dem Check-In wird markiert
+        const who=r=>{if(!isAbs(r.n))return [at(r.n),''];const v=resp(r.n);return v?[at(v),`für ${r.n}`]:[r.n,'⚠️ abwesend – kein Vertreter'];};
+        items.push(rows(b.rows.filter(r=>+r.v>0).map(r=>{const [w,x]=who(r);return [w,+r.v,x];}),true));
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
       });
     }
@@ -1404,7 +1406,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
     $('zwNew').innerHTML=B.length?`<div class="zw-new">${B.map((b,bi)=>{const [bg,fg]=kc(b.k),s=bsum(b);
       return `<div class="kcard" style="--kc:${bg};--kf:${fg}"><div class="khead"><div class="ktitle">${esc(kOf(b.k).label)}</div>
         <div style="display:flex;gap:6px;align-items:center"><div class="ktot${s?' on':''}" id="zwT${bi}">${s}</div><button type="button" class="e-del" data-zwdelk="${bi}" title="KPI entfernen">✕</button></div></div>
-        <div class="klist">${b.rows.map((r,ri)=>`<div class="krow"><div class="nm">${esc(r.n)}</div><input type="number" min="0" class="kval${+r.v>0?' has':''}" data-zb="${bi}" data-zr="${ri}" value="${esc(r.v??'')}" placeholder="–"><button type="button" class="e-del" data-zb="${bi}" data-zrdel="${ri}" title="Entfernen">✕</button></div>`).join('')}
+        <div class="klist">${b.rows.map((r,ri)=>`<div class="krow"><div class="nm">${esc(r.n)}</div><input type="number" min="0" class="kval${+r.v>0?' has':''}" data-zb="${bi}" data-zr="${ri}" value="${esc(r.v??'')}" placeholder="–"><button type="button" class="e-del" data-zb="${bi}" data-zrdel="${ri}" title="Entfernen">✕</button>${isAbs(r.n)?`<div class="krep">🏖️ abwesend → ${resp(r.n)?'markiert wird Vertretung <b>'+esc(resp(r.n))+'</b>':'<span style="color:#c4473b">kein Vertreter eingetragen</span>'}</div>`:''}</div>`).join('')}
           <div class="krow"><input type="text" class="kpick e-pick" list="bbgList" autocomplete="off" placeholder="＋ BBG-Namen tippen …" data-zbadd="${bi}"></div></div></div>`;}).join('')}</div>`
       :`<div class="zw-empty">Noch nichts ausgewählt – z. B. „ReFi Huddle“, „Emergency Replanning“ oder „Bauvorbereitung morgen“ wählen und hinzufügen.</div>`;
     fillSel();
@@ -1443,7 +1445,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const tabs=document.createElement('div');tabs.className='tabs';tabs.innerHTML='<button type="button" data-tab="ci">📊 Daily Check-In</button><button type="button" data-tab="zw">⏱️ Zwischenstand</button>';
   hero.appendChild(tabs);
   function setTab(t){document.body.classList.toggle('tab-zw',t==='zw');tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-    H2.textContent=TXT[t][0];P.innerHTML=TXT[t][1];try{localStorage.setItem('ciTab',t);}catch(e){}}
+    H2.textContent=TXT[t][0];P.innerHTML=TXT[t][1];if(t==='zw')renderNew();try{localStorage.setItem('ciTab',t);}catch(e){}}
   tabs.onclick=e=>{const t=e.target.dataset.tab;if(t){setTab(t);window.scrollTo({top:0,behavior:'smooth'});}};
   let t1='ci';try{t1=localStorage.getItem('ciTab')||'ci';}catch(e){}setTab(t1);
 
