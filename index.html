@@ -712,7 +712,7 @@ $('bEml').onclick=()=>{
 $('bNew').onclick=()=>{
   if(!confirm('Alle Zahlen, Kommentare und Screenshots leeren? Abwesenheiten und Vertretungen bleiben erhalten.'))return;
   if(S.tot&&Object.values(S.tot).some(x=>x!==''))S.prevTot=S.tot;S.tot={};TOT.forEach(([,id])=>$(id).value='');SHOTS.length=0;renderShots();
-  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;delete S.today;delete S.zwNew;delete S.goal;document.querySelectorAll('[data-g],[data-t]').forEach(x=>x.value='');$('datum').value=S.date;renderGrid();update();
+  TEAM.forEach(t=>{S.rows[t.name].c={};S.rows[t.name].cmt='';});S.date=todayISO();S.carried=false;delete S.today;delete S.zwNew;delete S.zwTot;delete S.goal;document.querySelectorAll('[data-g],[data-t],[data-zt]').forEach(x=>x.value='');$('datum').value=S.date;renderGrid();update();
 };
 $('datum').onchange=()=>{S.date=$('datum').value||todayISO();update();};
 
@@ -1285,7 +1285,9 @@ body.tab-zw .actionbar{justify-content:flex-end}
 .zw-k .bar{height:8px;border-radius:8px;background:#ececf1;overflow:hidden;margin-top:8px}
 .zw-k .bar i{display:block;height:100%;border-radius:8px}
 .zw-k .rest{font-size:12.5px;color:var(--muted);margin-top:5px}
-.zw-nogoal .zw-goal,.zw-nogoal .zw-gsum{opacity:.4}
+.zw-nogoal .zw-goal,.zw-nogoal .zw-gsum,.zw-notot .zw-stats{opacity:.4}
+.zw-stats{grid-template-columns:repeat(4,minmax(0,1fr))!important;margin:0 0 20px}
+@media(max-width:900px){.zw-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 .zw-gsum{font-size:13.5px;margin:-10px 0 20px;color:var(--muted)}
 .zw-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
 .zw-add select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;min-width:240px}
@@ -1315,12 +1317,22 @@ body.tab-zw .actionbar{justify-content:flex-end}
     const ok=parts.filter(x=>x.p!==null),ss=ok.reduce((a,x)=>a+x.s,0),si=ok.reduce((a,x)=>a+x.i,0);
     return {parts,ok,tot:ok.length?{s:ss,i:si,p:Math.round(si/ss*100)}:null};
   }
+  // Teamzahlen im Zwischenstand (Vergleich mit dem Stand vom Check-In am Morgen)
+  const ZT=[['cases','Cases gesamt','📂','#dcecff','#eef5ff','#2a6cc0'],['cwp','Closing w/ active Problems','⚠️','#ece6ff','#f5f2ff','#6a4fc9'],['blOff','Backlog Offboarding','📤','#d8f4f4','#eefafa','#16807f'],['blVbac','Backlog VBAC','🔁','#fff3c4','#fffaea','#9a7400']];
+  const ZV=()=>{S.zwTot=S.zwTot||{};return S.zwTot;};
+  const zv=k=>num(ZV()[k]),mv=k=>num((S.tot||{})[k]);
+  const zTrend=k=>{const v=zv(k),m=mv(k);if(v===null||m===null)return '';const d=v-m;return d===0?'= heute früh':`${d>0?'▲ +'+d:'▼ −'+(-d)} ggü. heute früh`;};
   const restTxt=x=>x.i>=x.s?`${x.i} von ${x.s} · ✅ erreicht${x.i>x.s?` (+${x.i-x.s})`:''}`:`${x.i} von ${x.s} · noch ${x.s-x.i}`;
 
   function buildZw(){
     const g=goal(),rows=window.ciRows;
     const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
     const body=[{type:'TextBlock',text:`⏱️ Zwischenstand · ${fdLong(S.date)} · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true}];
+    const tl=ZT.filter(([k])=>zv(k)!==null);
+    if(T().showTot!==false&&tl.length){
+      body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
+      body.push(rows(tl.map(([k,l])=>[l,zv(k),zTrend(k)])));
+    }
     const showG=T().show!==false&&g.tot;
     if(showG){
       const clr=p=>p>=100?'Good':'Accent';
@@ -1348,6 +1360,8 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const card=document.createElement('div');card.className='card';card.id='zwCard';
   card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏱️</span>Zwischenstand</h2>
     <p class="sub">Für den Push während des Tages – geht über denselben Teams-Workflow.</p>
+    <div class="zw-h">📈 Teamzahlen <small>aktueller Stand – Vergleich mit dem Check-In von heute früh</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShowTot"> Mit posten</label></div>
+    <div class="stats zw-stats">${ZT.map(([k,l,ic,c1,c2,fg])=>`<div class="stat" style="--c1:${c1};--c2:${c2};--fg:${fg}"><div class="lbl">${ic} ${l}</div><input type="number" min="0" data-zt="${k}" placeholder="–" aria-label="${l}"><div class="prev" id="zp_${k}"></div></div>`).join('')}</div>
     <div class="zw-h">🎯 Tagesziel heute <small>Soll &amp; aktuelles Ist aus Power BI</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShow"> Mit posten</label></div>
     <div class="zw-goal">${GK.map(([k,l])=>`<div class="zw-k" id="zk_${k}"><div class="t"><span>${l}</span><span class="pc">–</span></div>
       <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
@@ -1362,7 +1376,10 @@ body.tab-zw .actionbar{justify-content:flex-end}
   // Webhook-Einstellungen in beiden Tabs sichtbar
   const wf=$('wfBox')&&$('wfBox').closest('.card');if(wf)wf.id='wfCardHolder';
 
-  $('zwShow').checked=T().show!==false;$('zwShow').onchange=()=>{T().show=$('zwShow').checked;card.classList.toggle('zw-nogoal',!T().show);update();};card.classList.toggle('zw-nogoal',T().show===false);
+  const tog=()=>{card.classList.toggle('zw-nogoal',T().show===false);card.classList.toggle('zw-notot',T().showTot===false);$('zwShow').checked=T().show!==false;$('zwShowTot').checked=T().showTot!==false;};
+  $('zwShowTot').onchange=()=>{T().showTot=$('zwShowTot').checked;tog();update();};
+  card.querySelectorAll('[data-zt]').forEach(inp=>{inp.value=ZV()[inp.dataset.zt]??'';inp.addEventListener('input',()=>{ZV()[inp.dataset.zt]=inp.value;update();});});
+  $('zwShow').checked=T().show!==false;$('zwShow').onchange=()=>{T().show=$('zwShow').checked;tog();update();};tog();
   const t0=T();card.querySelectorAll('[data-t]').forEach(inp=>{inp.value=t0[inp.dataset.t]??'';inp.addEventListener('input',()=>{T()[inp.dataset.t]=inp.value;update();});});
 
   function fillSel(){
@@ -1393,13 +1410,15 @@ body.tab-zw .actionbar{justify-content:flex-end}
   $('zwNew').addEventListener('click',e=>{const t=e.target;
     if(t.dataset.zwdelk!==undefined){NW().splice(+t.dataset.zwdelk,1);renderNew();update();}
     else if(t.dataset.zrdel!==undefined){NW()[+t.dataset.zb].rows.splice(+t.dataset.zrdel,1);renderNew();update();}});
-  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und To-Do’s leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');$('zwShow').checked=true;card.classList.remove('zw-nogoal');renderNew();update();};
-  const go=()=>{const g=goal();if(!(T().show!==false&&g.tot)&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder offene To-Do’s eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
+  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und To-Do’s leeren?'))return;S.today={};S.zwNew=[];S.zwTot={};card.querySelectorAll('[data-t],[data-zt]').forEach(x=>x.value='');$('zwShowTot').checked=true;card.classList.remove('zw-notot');$('zwShow').checked=true;card.classList.remove('zw-nogoal');renderNew();update();};
+  const go=()=>{const g=goal();if(!(T().show!==false&&g.tot)&&!(T().showTot!==false&&ZT.some(([k])=>zv(k)!==null))&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder offene To-Do’s eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
   $('bZw').onclick=go;
   const ab=document.createElement('button');ab.className='ab-btn';ab.id='abZw';ab.type='button';ab.textContent='⏱️ Zwischenstand posten';ab.onclick=go;
   $('abPost').after(ab);
 
   function refresh(){
+    ZT.forEach(([k])=>{const m=mv(k),t=zTrend(k),el=$('zp_'+k);
+      el.innerHTML=m===null?'Check-In: –':`Check-In: ${m}`+(t&&t!=='= heute früh'?` · <span class="${zv(k)>m?'up':'down'}">${esc(t.replace(' ggü. heute früh',''))}</span>`:t?' · unverändert':'');});
     const g=goal();
     g.parts.forEach(x=>{const el=$('zk_'+x.k),c=x.p===null?'#d2d2d7':x.p>=100?'#30b85a':'#0a84ff';
       el.querySelector('.pc').textContent=x.p===null?'–':x.p+' %';el.querySelector('.pc').style.color=x.p===null?'':c;
@@ -1417,7 +1436,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   tabs.onclick=e=>{const t=e.target.dataset.tab;if(t){setTab(t);window.scrollTo({top:0,behavior:'smooth'});}};
   let t1='ci';try{t1=localStorage.getItem('ciTab')||'ci';}catch(e){}setTab(t1);
 
-  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();$('zwShow').checked=T().show!==false;card.classList.toggle('zw-nogoal',!$('zwShow').checked);renderNew();update();};
+  const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();tog();renderNew();update();};
   const oU=update;update=function(){refresh();oU();};
   renderNew();update();
 })();
