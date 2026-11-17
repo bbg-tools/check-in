@@ -1223,10 +1223,9 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.tagName==='INPU
     const isMain=typeof cardFn!=='function';if(isMain)cardFn=buildCard;
     const url=getUrl();
     if(!url){toast('Bitte zuerst unter „Teams-Workflow“ die Webhook-Adresse hinterlegen');$('wfBox').open=true;$('wfBox').scrollIntoView({behavior:'smooth'});return;}
-    const card=cardFn(),ments=card.attachments[0].content.msteams.entities.length;
+    const card=await window.ciPreview(cardFn(),kind||'Daily Check-In');if(!card)return;
     const kb=new Blob([JSON.stringify(card.attachments[0].content)]).size/1024;
     if(kb>26){toast(`Nachricht zu groß für Teams (${Math.round(kb)} KB, max. ca. 28 KB) – bitte „Teams kopieren“ nutzen`);return;}
-    if(!confirm(`${kind||'Nachricht'} jetzt in Teams posten?\n\n${ments} BBG${ments===1?' wird':'s werden'} markiert.`))return;
     const btns=[$('bPost'),$('abPost'),$('bZw'),$('abZw')];
     const ok=()=>{};btns.forEach(b=>b&&(b.disabled=true));
     try{
@@ -1418,6 +1417,119 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const oN=$('bNew').onclick;$('bNew').onclick=()=>{oN&&oN();renderNew();update();};
   const oU=update;update=function(){refresh();oU();};
   renderNew();update();
+})();
+</script>
+<style>
+/* ===== Vorschau vor dem Posten ===== */
+#pvOv{position:fixed;inset:0;z-index:60;background:rgba(20,20,30,.45);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+#pvOv.on{display:flex}
+.pv-box{background:#fff;border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(1180px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden}
+.pv-head{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;border-bottom:1px solid var(--line-soft)}
+.pv-head h3{margin:0;font-size:18px;letter-spacing:-.01em}
+.pv-x{border:none;background:#f2f2f5;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer}
+.pv-body{display:grid;grid-template-columns:360px minmax(0,1fr);gap:0;overflow:auto;flex:1}
+.pv-form{padding:18px 22px;border-right:1px solid var(--line-soft);display:flex;flex-direction:column;gap:14px;background:#fafafc}
+.pv-form label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600}
+.pv-form label small{font-weight:400;color:var(--muted)}
+.pv-form textarea{font:inherit;font-weight:400;border:1px solid var(--line);border-radius:12px;padding:9px 11px;resize:vertical;min-height:44px;background:#fff}
+.pv-form textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,113,227,.15)}
+.pv-info{font-size:12.5px;color:var(--muted);line-height:1.5}
+.pv-warn{font-size:13px;color:#b42318;background:#fff1f0;border-radius:10px;padding:8px 10px}
+.pv-prev{padding:18px 22px;background:#f0f0f3;overflow:auto}
+.pv-prev .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+.pv-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid var(--line-soft)}
+@media(max-width:860px){.pv-body{grid-template-columns:1fr}.pv-form{border-right:none;border-bottom:1px solid var(--line-soft)}#pvOv{padding:8px}}
+/* Teams-ähnliche Darstellung der Adaptive Card */
+.ac{background:#fff;border:1px solid #e1e1e1;border-radius:6px;padding:14px 16px;font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;color:#242424;line-height:1.4;max-width:640px}
+.ac .tb{white-space:pre-wrap;overflow-wrap:anywhere}
+.ac .tb.nw{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac .men{color:#5b5fc7;font-weight:600}
+.ac .cs{display:flex;gap:10px}
+.ac .col{min-width:0;display:flex;flex-direction:column}
+.ac .ct{border-radius:4px;padding:10px 14px}
+.ac .ct.emphasis{background:#f5f5f5}.ac .ct.accent{background:#e8ebfa}.ac .ct.warning{background:#fbf6d9}
+.ac .sep{border-top:1px solid #e1e1e1;padding-top:6px}
+</style>
+<script>
+/* ===== Vorschau-Fenster vor dem Posten (Texte nur für diese Nachricht) ===== */
+(function(){
+  const SP={None:0,Small:4,Default:8,Medium:12,Large:20,ExtraLarge:28};
+  const SZ={Small:12,Default:14,Medium:16,Large:20,ExtraLarge:28};
+  const CL={Good:'#237b4b',Attention:'#c4314b',Warning:'#b75c00',Accent:'#5b5fc7'};
+  const md=t=>esc(t).replace(/&lt;at&gt;(.*?)&lt;\/at&gt;/g,'<span class="men">$1</span>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[\s(])_(.+?)_(?=$|[\s).,:;!?])/g,'$1<i>$2</i>');
+  function el(x,first){
+    const st=[];const sp=first?0:(SP[x.spacing||'Default']??8);st.push(`margin-top:${sp}px`);
+    let h='',cls=x.separator&&!first?' sep':'';
+    if(x.type==='TextBlock'){
+      st.push(`font-size:${SZ[x.size||'Default']}px`);if(x.weight==='Bolder')st.push('font-weight:700');
+      if(x.color&&CL[x.color])st.push('color:'+CL[x.color]);else if(x.isSubtle)st.push('color:#616161');
+      if(x.horizontalAlignment==='Right')st.push('text-align:right');
+      return `<div class="tb${x.wrap?'':' nw'}${cls}" style="${st.join(';')}">${md(x.text||'')||'&nbsp;'}</div>`;
+    }
+    if(x.type==='ColumnSet'){
+      h=(x.columns||[]).map(c=>{const w=c.width==='auto'?'flex:0 0 auto':c.width==='stretch'||!c.width?'flex:1 1 0':/px$/.test(c.width)?`flex:0 0 ${c.width}`:`flex:${c.width} 1 0`;
+        const va=c.verticalContentAlignment==='Center'?';justify-content:center':'';
+        return `<div class="col" style="${w}${va}">${(c.items||[]).map((i,k)=>el(i,k===0)).join('')}</div>`;}).join('');
+      return `<div class="cs${cls}" style="${st.join(';')}">${h}</div>`;
+    }
+    if(x.type==='Container'){
+      return `<div class="${x.style?'ct '+x.style:''}${cls}" style="${st.join(';')}">${(x.items||[]).map((i,k)=>el(i,k===0)).join('')}</div>`;
+    }
+    return '';
+  }
+  const render=c=>`<div class="ac">${c.body.map((x,i)=>el(x,i===0)).join('')}</div>`;
+
+  // Texte einsetzen
+  function apply(base,f){
+    const card=JSON.parse(JSON.stringify(base)),c=card.attachments[0].content,b=c.body;
+    const last=b[b.length-1];const hasClose=last&&last.type==='TextBlock';
+    if(hasClose){if(f.close.trim())last.text=f.close.trim();else b.pop();}
+    if(f.hint.trim()){const blk={type:'Container',style:'accent',spacing:'Large',items:[{type:'TextBlock',text:'💡 '+f.hint.trim(),wrap:true}]};
+      if(hasClose&&f.close.trim())b.splice(b.length-1,0,blk);else b.push(blk);}
+    if(f.intro.trim()){const pos=1+(b[1]&&b[1].isSubtle?1:0);b.splice(pos,0,{type:'TextBlock',text:f.intro.trim(),wrap:true,spacing:'Medium'});}
+    return card;
+  }
+  const ov=document.createElement('div');ov.id='pvOv';
+  ov.innerHTML=`<div class="pv-box" role="dialog" aria-modal="true" aria-labelledby="pvT">
+    <div class="pv-head"><h3 id="pvT">Vorschau</h3><button type="button" class="pv-x" id="pvX" aria-label="Schließen">✕</button></div>
+    <div class="pv-body">
+      <div class="pv-form">
+        <label>Einleitung <small>optional – erscheint unter der Überschrift</small><textarea id="pvIntro" rows="2" placeholder="z. B. Kurzer Push vor der Mittagspause 🍕"></textarea></label>
+        <label>Zusätzlicher Hinweis <small>optional – farbig hervorgehoben</small><textarea id="pvHint" rows="2" placeholder="z. B. Ab 15 Uhr bitte nur noch Emergency Replanning"></textarea></label>
+        <label>Schlusssatz <small>frei änderbar – leer lassen zum Weglassen</small><textarea id="pvClose" rows="3"></textarea></label>
+        <div class="pv-info" id="pvInfo"></div>
+        <div class="pv-warn" id="pvWarn" hidden></div>
+        <div class="pv-info">Zahlen, Namen &amp; KPIs bitte auf der Seite ändern. Die Texte hier gelten nur für diese eine Nachricht.</div>
+      </div>
+      <div class="pv-prev"><div class="lbl">So erscheint die Nachricht in Teams</div><div id="pvCard"></div></div>
+    </div>
+    <div class="pv-foot"><button type="button" class="b ghost" id="pvCancel">Abbrechen</button><button type="button" class="b" id="pvGo">📣 Jetzt posten</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+
+  window.ciPreview=function(base,kind){
+    return new Promise(res=>{
+      const b=base.attachments[0].content.body,last=b[b.length-1];
+      $('pvT').textContent=`Vorschau · ${kind}`;$('pvIntro').value='';$('pvHint').value='';
+      $('pvClose').value=last&&last.type==='TextBlock'?last.text.replace(/\*\*/g,''):'';
+      // Fettung im Standard-Schlusssatz erhalten
+      const origClose=last&&last.type==='TextBlock'?last.text:'';
+      const fields=()=>({intro:$('pvIntro').value,hint:$('pvHint').value,close:$('pvClose').value===origClose.replace(/\*\*/g,'')?origClose:$('pvClose').value});
+      let cur=base;
+      const paint=()=>{cur=apply(base,fields());const c=cur.attachments[0].content;$('pvCard').innerHTML=render(c);
+        const m=c.msteams.entities.length,kb=new Blob([JSON.stringify(c)]).size/1024;
+        $('pvInfo').textContent=m?`${m} ${m===1?'Person wird':'Personen werden'} markiert.`:'Niemand wird markiert.';
+        const big=kb>26;$('pvWarn').hidden=!big;$('pvWarn').textContent=big?`Nachricht zu groß für Teams (${Math.round(kb)} KB, max. ca. 28 KB) – bitte Texte kürzen oder „Teams kopieren“ nutzen.`:'';$('pvGo').disabled=big;};
+      ['pvIntro','pvHint','pvClose'].forEach(id=>$(id).oninput=paint);
+      const close=v=>{ov.classList.remove('on');document.removeEventListener('keydown',esc_);res(v);};
+      const esc_=e=>{if(e.key==='Escape')close(null);};
+      $('pvX').onclick=$('pvCancel').onclick=()=>close(null);
+      ov.onclick=e=>{if(e.target===ov)close(null);};
+      $('pvGo').onclick=()=>close(cur);
+      document.addEventListener('keydown',esc_);
+      paint();ov.classList.add('on');setTimeout(()=>$('pvIntro').focus(),50);
+    });
+  };
 })();
 </script>
 </body>
