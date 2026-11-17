@@ -1339,16 +1339,16 @@ body.tab-zw .actionbar{justify-content:flex-end}
     const g=goal(),rows=window.ciRows;
     const ents=[];const at=n=>{if(!ents.find(e=>e.mentioned.id===mailOf(n)))ents.push({type:'mention',text:`<at>${n}</at>`,mentioned:{id:mailOf(n),name:n}});return `<at>${n}</at>`;};
     const body=[{type:'TextBlock',text:`⏱️ Zwischenstand · ${fdLong(S.date)} · ${hhmm()} Uhr`,weight:'Bolder',size:'Large',wrap:true}];
-    const tl=ZT.filter(([k])=>zv(k)!==null);
-    if(T().showTot!==false&&tl.length){
-      body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
-      body.push(rows(tl.map(([k,l])=>[l,zv(k),zTrend(k)])));
-    }
     const showG=T().show!==false&&g.tot;
     if(showG){
       const clr=p=>p>=100?'Good':'Accent';
       body.push({type:'TextBlock',text:'🎯 Tagesziel heute',weight:'Bolder',spacing:'Large'});
       body.push(rows(g.ok.map(x=>[x.l,`${x.p} %`,restTxt(x),0,clr(x.p)]).concat([['Gesamt',`${g.tot.p} %`,restTxt(g.tot),1,clr(g.tot.p)]])));
+    }
+    const tl=ZT.filter(([k])=>zv(k)!==null);
+    if(T().showTot!==false&&tl.length){
+      body.push({type:'TextBlock',text:'📈 Teamzahlen',weight:'Bolder',spacing:'Large'});
+      body.push(rows(tl.map(([k,l])=>[l,zv(k),zTrend(k)])));
     }
     const nb=NW().filter(b=>bsum(b)>0);
     if(nb.length){
@@ -1373,13 +1373,13 @@ body.tab-zw .actionbar{justify-content:flex-end}
   const card=document.createElement('div');card.className='card';card.id='zwCard';
   card.innerHTML=`<h2><span class="ico" style="--c:#ece6ff">⏱️</span>Zwischenstand</h2>
     <p class="sub">Für den Push während des Tages – geht über denselben Teams-Workflow.</p>
-    <div class="zw-h">📈 Teamzahlen <small>aktueller Stand – Vergleich mit dem Check-In von heute früh</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShowTot"> Mit posten</label></div>
-    <div class="stats zw-stats">${ZT.map(([k,l,ic,c1,c2,fg])=>`<div class="stat" style="--c1:${c1};--c2:${c2};--fg:${fg}"><div class="lbl">${ic} ${l}</div><input type="number" min="0" data-zt="${k}" placeholder="–" aria-label="${l}"><div class="prev" id="zp_${k}"></div></div>`).join('')}</div>
     <div class="zw-h">🎯 Tagesziel heute <small>Soll &amp; aktuelles Ist aus Power BI</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShow"> Mit posten</label></div>
     <div class="zw-goal">${GK.map(([k,l])=>`<div class="zw-k" id="zk_${k}"><div class="t"><span>${l}</span><span class="pc">–</span></div>
       <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
       <div class="bar"><i></i></div><div class="rest"></div></div>`).join('')}</div>
     <div class="zw-gsum" id="zwGsum"></div>
+    <div class="zw-h">📈 Teamzahlen <small>aktueller Stand – Vergleich mit dem Check-In von heute früh</small><label class="goal-tog" style="margin-left:auto"><input type="checkbox" id="zwShowTot"> Mit posten</label></div>
+    <div class="stats zw-stats">${ZT.map(([k,l,ic,c1,c2,fg])=>`<div class="stat" style="--c1:${c1};--c2:${c2};--fg:${fg}"><div class="lbl">${ic} ${l}</div><input type="number" min="0" data-zt="${k}" placeholder="–" aria-label="${l}"><div class="prev" id="zp_${k}"></div></div>`).join('')}</div>
     <div class="zw-h">📌 Offene To-Do’s <small>KPI auswählen und die BBGs dazu eintragen</small></div>
     <div class="zw-add"><select id="zwSel"></select><button class="addbtn" type="button" id="zwAddK">＋ KPI hinzufügen</button></div>
     <div id="zwNew"></div>
