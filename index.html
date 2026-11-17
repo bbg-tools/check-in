@@ -1295,7 +1295,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
 .zw-empty{color:var(--muted);font-size:13.5px;padding:10px 12px;background:#f7f7f9;border-radius:12px;margin-bottom:14px}
 </style>
 <script>
-/* ===== Zwischenstand (eigener Tab): Tagesziel heute + neu reingekommene wichtige KPIs ===== */
+/* ===== Zwischenstand (eigener Tab): Tagesziel heute + wichtige & offene To-Do’s ===== */
 (function(){
   const GK=[['onb','ONB'],['off','OFF'],['vbac','VBAC']];
   const short=l=>l.replace(' offen (heute)','').replace('Schadenstickets On Hold BBG','Schäden On Hold').replace('ReFi Huddle | CS > FFMT Mapping','FFMT Mapping').replace('Reopened Retention Cases','Reopened Retention');
@@ -1326,16 +1326,16 @@ body.tab-zw .actionbar{justify-content:flex-end}
     }
     const nb=NW().filter(b=>bsum(b)>0);
     if(nb.length){
-      body.push({type:'TextBlock',text:'🆕 Neu reingekommen',weight:'Bolder',spacing:'Large'});
+      body.push({type:'TextBlock',text:'📌 Wichtige & offene To-Do’s',weight:'Bolder',spacing:'Large'});
       nb.forEach(b=>{
         const items=[{type:'ColumnSet',columns:[
           {type:'Column',width:'stretch',items:[{type:'TextBlock',text:`**${short(kOf(b.k).label)}**`,wrap:true}]},
-          {type:'Column',width:'auto',items:[{type:'TextBlock',text:`**${bsum(b)} neu**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
+          {type:'Column',width:'auto',items:[{type:'TextBlock',text:`**${bsum(b)} offen**`,color:'Attention',horizontalAlignment:'Right'}]}]}];
         items.push(rows(b.rows.filter(r=>+r.v>0).map(r=>[at(r.n),+r.v,'']),true));
         body.push({type:'Container',style:'emphasis',spacing:'Small',items});
       });
     }
-    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die neuen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel!':'👉 Dranbleiben – wir holen das Tagesziel!',wrap:true,spacing:'Large'});
+    body.push({type:'TextBlock',text:nb.length?'👉 Bitte die offenen Punkte priorisiert bearbeiten und dranbleiben – wir holen das Tagesziel!':'👉 Dranbleiben – wir holen das Tagesziel!',wrap:true,spacing:'Large'});
     return {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',contentUrl:null,content:{
       $schema:'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body,msteams:{width:'Full',entities:ents}}}]};
   }
@@ -1350,7 +1350,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
       <div class="g-in"><label>Soll heute<input type="number" min="0" data-t="${k}S" placeholder="–"></label><label>Ist bisher<input type="number" min="0" data-t="${k}I" placeholder="–"></label></div>
       <div class="bar"><i></i></div><div class="rest"></div></div>`).join('')}</div>
     <div class="zw-gsum" id="zwGsum"></div>
-    <div class="zw-h">🆕 Neu reingekommen <small>wichtige KPIs auswählen und die BBGs dazu eintragen</small></div>
+    <div class="zw-h">📌 Wichtige &amp; offene To-Do’s <small>KPI auswählen und die BBGs dazu eintragen</small></div>
     <div class="zw-add"><select id="zwSel"></select><button class="addbtn" type="button" id="zwAddK">＋ KPI hinzufügen</button></div>
     <div id="zwNew"></div>
     <div class="btns"><button class="b" type="button" id="bZw">⏱️ Zwischenstand in Teams posten</button>
@@ -1390,7 +1390,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   $('zwNew').addEventListener('click',e=>{const t=e.target;
     if(t.dataset.zwdelk!==undefined){NW().splice(+t.dataset.zwdelk,1);renderNew();update();}
     else if(t.dataset.zrdel!==undefined){NW()[+t.dataset.zb].rows.splice(+t.dataset.zrdel,1);renderNew();update();}});
-  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und neu reingekommene KPIs leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');renderNew();update();};
+  $('zwClear').onclick=()=>{if(!confirm('Tagesziel und To-Do’s leeren?'))return;S.today={};S.zwNew=[];card.querySelectorAll('[data-t]').forEach(x=>x.value='');renderNew();update();};
   const go=()=>{const g=goal();if(!g.tot&&!NW().some(b=>bsum(b)>0)){toast('Bitte zuerst Tagesziel oder neue KPIs eintragen');return;}window.ciPost(buildZw,'Zwischenstand');};
   $('bZw').onclick=go;
   const ab=document.createElement('button');ab.className='ab-btn';ab.id='abZw';ab.type='button';ab.textContent='⏱️ Zwischenstand posten';ab.onclick=go;
@@ -1406,7 +1406,7 @@ body.tab-zw .actionbar{justify-content:flex-end}
   }
   // ---- Tabs ----
   const hero=document.querySelector('.hero'),H2=hero.querySelector('h2'),P=hero.querySelector('p');
-  const TXT={ci:['Daily Check-In.',P.textContent],zw:['Zwischenstand.','Tagesziel aktualisieren und neu reingekommene wichtige KPIs den BBGs zuordnen – kurz &amp; knackig in Teams posten.']};
+  const TXT={ci:['Daily Check-In.',P.textContent],zw:['Zwischenstand.','Tagesziel aktualisieren und wichtige bzw. offene To-Do’s den BBGs zuordnen – kurz &amp; knackig in Teams posten.']};
   const tabs=document.createElement('div');tabs.className='tabs';tabs.innerHTML='<button type="button" data-tab="ci">📊 Daily Check-In</button><button type="button" data-tab="zw">⏱️ Zwischenstand</button>';
   hero.appendChild(tabs);
   function setTab(t){document.body.classList.toggle('tab-zw',t==='zw');tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
